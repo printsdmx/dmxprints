@@ -39,7 +39,6 @@
     .card:hover { transform: translateY(-3px); border-color: #a5b4fc; box-shadow: 0 10px 24px rgba(79,70,229,0.08); }
 
     .badge { padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
-    .badge-submitted { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
     .badge-autoload { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
     .badge-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
     .badge-printed { background: #dcfce7; color: #166534; }
@@ -107,9 +106,7 @@
       </div>
       <select id="dashStatusFilter" onchange="renderDashboard()">
         <option value="all">All Schools</option>
-        <option value="collecting">Collecting Data</option>
         <option value="autoload">Auto Updation Requested</option>
-        <option value="submitted">Submitted for Print</option>
       </select>
     </div>
 
@@ -141,7 +138,7 @@
       <div style="flex:1; min-width:280px;">
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span id="viewUdiseHead" style="color:#4f46e5; font-size:1.55rem; font-family:monospace; font-weight:800;">UDISE: 000000</span>
-          <span id="viewPrintStatusBadge" class="badge badge-ready">Collecting Data</span>
+          <span class="badge badge-ready">🟢 Live Sync Active</span>
           <span id="viewAutoLoadBadge" class="badge badge-autoload hidden">⏳ Auto Updation Requested by School</span>
         </div>
         <div id="viewSchoolName" style="color:#ea580c; font-size:19px; font-weight:800; margin-top:6px;"></div>
@@ -162,17 +159,16 @@
       </div>
     </div>
 
-    <!-- Client Drag & Drop Card Designer + Submit for Printing Bar (No Lockout!) -->
+    <!-- Client Drag & Drop Card Designer Bar -->
     <div class="config-panel">
       <div>
-        <h3 style="margin:0; color:#6b21a8; font-size:16px;"><i class="fas fa-paint-roller"></i> ID Card Design & Print Submission</h3>
-        <p style="margin:4px 0 0 0; font-size:12.5px; color:#555;">Upload your custom card background, drag & drop text/photo coordinates, and submit to Admin for printing. You and the school can still edit anytime!</p>
+        <h3 style="margin:0; color:#6b21a8; font-size:16px;"><i class="fas fa-paint-roller"></i> ID Card Layout Designer</h3>
+        <p style="margin:4px 0 0 0; font-size:12.5px; color:#555;">Upload your custom card background and drag & drop text/photo coordinates. All changes sync live with Admin!</p>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         <input id="fontInput" type="file" accept=".ttf,.otf" class="hidden" onchange="loadCustomOdiaFont(event)">
         <button class="btn btn-outline" onclick="document.getElementById('fontInput').click()"><i class="fas fa-font"></i> Load Odia Font (.ttf)</button>
-        <button class="btn btn-purple" style="padding:11px 18px;" onclick="openLayoutEditor()"><i class="fas fa-Sliders-h"></i> Design Card Layout (Drag & Drop)</button>
-        <button id="submitPrintBtn" class="btn btn-success" style="padding:11px 18px;" onclick="submitSchoolForPrinting()"><i class="fas fa-paper-plane"></i> Submit to Admin for Printing</button>
+        <button class="btn btn-purple" style="padding:11px 18px;" onclick="openLayoutEditor()"><i class="fas fa-sliders-h"></i> Design Card Layout (Drag & Drop)</button>
       </div>
     </div>
 
@@ -688,9 +684,7 @@ function renderDashboard() {
   const statusFilter = document.getElementById('dashStatusFilter').value;
 
   const list = Object.values(clientSchoolsMap).filter(s => {
-    if (statusFilter === 'submitted' && s.printStatus !== 'submitted') return false;
     if (statusFilter === 'autoload' && s.importStatus !== 'pending') return false;
-    if (statusFilter === 'collecting' && s.printStatus === 'submitted') return false;
     return (s.udise || '').toLowerCase().includes(search) ||
            (s.name || '').toLowerCase().includes(search) ||
            (s.district || '').toLowerCase().includes(search);
@@ -707,10 +701,7 @@ function renderDashboard() {
     const card = document.createElement('div');
     card.className = 'card';
 
-    let badges = s.printStatus === 'submitted'
-      ? `<span class="badge badge-submitted"><i class="fas fa-print"></i> Submitted to Admin</span>`
-      : `<span class="badge badge-ready">🟢 Collecting Data</span>`;
-
+    let badges = `<span class="badge badge-ready">🟢 Active School</span>`;
     if (s.importStatus === 'pending') badges += ` <span class="badge badge-autoload">⏳ Auto Updation Requested by School</span>`;
     if (s.importStatus === 'wrong_password') badges += ` <span class="badge badge-error">❌ Wrong UDISE Password</span>`;
 
@@ -824,7 +815,6 @@ async function saveClientSchool() {
       udise, name, appPassword, block, district, pin, phone, customFields, hmSignature,
       clientId: currentClient.id,
       clientName: currentClient.name,
-      printStatus: clientSchoolsMap[udise]?.printStatus || 'collecting',
       importStatus: clientSchoolsMap[udise]?.importStatus || 'manual',
       createdAt: clientSchoolsMap[udise]?.createdAt || Date.now(),
       lastModified: Date.now()
@@ -952,20 +942,6 @@ function refreshSchoolHeaderUI() {
   signImg.src = s.hmSignature || '';
   signImg.style.display = s.hmSignature ? 'inline-block' : 'none';
 
-  const pBadge = document.getElementById('viewPrintStatusBadge');
-  const submitBtn = document.getElementById('submitPrintBtn');
-  if (s.printStatus === 'submitted') {
-    pBadge.className = 'badge badge-submitted';
-    pBadge.innerHTML = '🖨️ Submitted to Admin for Printing (Editing Open)';
-    submitBtn.innerHTML = '<i class="fas fa-check-double"></i> Submitted to Admin (Click to Unmark)';
-    submitBtn.className = 'btn btn-outline';
-  } else {
-    pBadge.className = 'badge badge-ready';
-    pBadge.innerHTML = '🟢 Collecting Data';
-    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit to Admin for Printing';
-    submitBtn.className = 'btn btn-success';
-  }
-
   // Show Auto-Load Requested Badge to Client (WITHOUT showing the UDISE password)
   const autoBadge = document.getElementById('viewAutoLoadBadge');
   if (s.importStatus === 'pending') {
@@ -992,22 +968,6 @@ function shareSchoolLinkWhatsApp() {
   const msg = `Hello *${s.name}* (UDISE: *${s.udise}*),\n\nPlease click your custom link below to add or update student ID card data and photos:\n👉 ${link}\n\n*UDISE:* ${s.udise}\n*Password:* ${s.appPassword}`;
   const phone = (s.phone && s.phone.length === 10) ? `91${s.phone}` : '';
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-}
-
-async function submitSchoolForPrinting() {
-  const s = clientSchoolsMap[activeUdise]; if (!s) return;
-  const isCurrentlySubmitted = s.printStatus === 'submitted';
-  const nextStatus = isCurrentlySubmitted ? 'collecting' : 'submitted';
-  const confirmMsg = isCurrentlySubmitted
-    ? `Remove "${s.name}" from the Admin Print Queue?`
-    : `Submit "${s.name}" to Master Admin for Printing?\n\n(Note: You and the school can still edit students and layouts anytime!)`;
-
-  if (!confirm(confirmMsg)) return;
-  await db.collection('schools').doc(activeUdise).update({
-    printStatus: nextStatus,
-    submittedAt: Date.now(),
-    lastModified: Date.now()
-  });
 }
 
 /* ================= UDISE AUTO-LOAD REQUEST ================= */
