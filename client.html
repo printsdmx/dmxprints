@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Client Partner Portal - ID Cards Pro</title>
 
-  <!-- SheetJS (For Client Excel Upload & Template Download), Firebase, Cropper.js, FontAwesome -->
+  <!-- SheetJS, Firebase, Cropper.js, FontAwesome -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
@@ -219,7 +219,7 @@
 
 <canvas id="cardCanvas" style="display:none;"></canvas>
 
-<!-- ================= CLIENT EXCEL UPLOAD MODAL (WITH REQUIRED COLUMNS GUIDE) ================= -->
+<!-- ================= CLIENT EXCEL UPLOAD MODAL ================= -->
 <div id="clientExcelModal" class="modal">
   <div class="modal-content">
     <h3 style="margin-top:0; color:#16a34a;"><i class="fas fa-file-excel"></i> Upload Excel to School</h3>
@@ -342,17 +342,18 @@
   </div>
 </div>
 
-<!-- ================= ADD / EDIT STUDENT MODAL ================= -->
+<!-- ================= ADD / EDIT STUDENT MODAL (DYNAMICALLY FILTERED BY CHOSEN FIELDS) ================= -->
 <div id="studentModal" class="modal">
   <div class="modal-content">
-    <h3 id="studentModalTitle" style="margin-top:0;">Add / Edit Student</h3>
+    <h3 id="studentModalTitle" style="margin-top:0; margin-bottom:4px;">Add / Edit Student</h3>
+    <div id="clientModalFieldsNote" style="font-size:11.5px; color:#4f46e5; font-weight:600; margin-bottom:14px;"></div>
     <input type="hidden" id="stEditId">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-      <div style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Full Name *</label><input type="text" id="stName" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Class</label><input type="text" id="stClass" placeholder="e.g. 5" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Roll No</label><input type="text" id="stRoll" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Date of Birth</label><input type="date" id="stDob" style="width:100%;"></div>
-      <div>
+      <div id="cw-name" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Full Name *</label><input type="text" id="stName" style="width:100%;"></div>
+      <div id="cw-class"><label style="font-size:12px; font-weight:700;">Class</label><input type="text" id="stClass" placeholder="e.g. 5" style="width:100%;"></div>
+      <div id="cw-roll"><label style="font-size:12px; font-weight:700;">Roll No</label><input type="text" id="stRoll" style="width:100%;"></div>
+      <div id="cw-dob"><label style="font-size:12px; font-weight:700;">Date of Birth</label><input type="date" id="stDob" style="width:100%;"></div>
+      <div id="cw-blood">
         <label style="font-size:12px; font-weight:700;">Blood Group</label>
         <select id="stBlood" style="width:100%;">
           <option value="">Select</option>
@@ -362,10 +363,10 @@
           <option value="AB+">AB+</option><option value="AB-">AB-</option>
         </select>
       </div>
-      <div><label style="font-size:12px; font-weight:700;">Contact / Mobile</label><input type="tel" id="stPhone" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Father's Name</label><input type="text" id="stFather" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Mother's Name</label><input type="text" id="stMother" style="width:100%;"></div>
-      <div style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Address</label><input type="text" id="stAddress" style="width:100%;"></div>
+      <div id="cw-phone"><label style="font-size:12px; font-weight:700;">Contact / Mobile</label><input type="tel" id="stPhone" style="width:100%;"></div>
+      <div id="cw-father"><label style="font-size:12px; font-weight:700;">Father's Name</label><input type="text" id="stFather" style="width:100%;"></div>
+      <div id="cw-mother"><label style="font-size:12px; font-weight:700;">Mother's Name</label><input type="text" id="stMother" style="width:100%;"></div>
+      <div id="cw-address" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Address</label><input type="text" id="stAddress" style="width:100%;"></div>
     </div>
 
     <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:10px; text-align:center; margin-bottom:14px;">
@@ -534,6 +535,28 @@ let croppedStudentBlob = null;
 window.fontLoaded = false;
 const globalImageCache = {};
 
+// Universal Date Parser: Converts DD/MM/YYYY, DD-MM-YYYY, or Excel serial numbers into YYYY-MM-DD
+function formatDateForInput(dateStr) {
+  if (!dateStr) return '';
+  dateStr = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{5}$/.test(dateStr)) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const dateObj = new Date(excelEpoch.getTime() + (parseInt(dateStr) * 86400000));
+    return dateObj.toISOString().split('T')[0];
+  }
+  const parts = dateStr.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    let p0 = parts[0].trim(), p1 = parts[1].trim(), p2 = parts[2].trim();
+    if (p0.length === 4) return `${p0}-${p1.padStart(2, '0')}-${p2.padStart(2, '0')}`;
+    if (p2.length === 2 || p2.length === 4) {
+      let y = p2.length === 2 ? (Number(p2) > 50 ? "19" + p2 : "20" + p2) : p2;
+      return `${y}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
+    }
+  }
+  return dateStr;
+}
+
 async function compressImageToDataUrl(fileOrBlob, maxW, maxH, quality = 0.82, mime = 'image/jpeg') {
   const img = new Image();
   const url = typeof fileOrBlob === 'string' ? fileOrBlob : URL.createObjectURL(fileOrBlob);
@@ -586,16 +609,6 @@ function normalizeClass(cls) {
   if (map[c]) return map[c];
   if (['shishuvatika','shishu','nursery','lkg','ukg','pp1','pp2'].includes(c)) return "Shishuvatika";
   return String(cls).trim();
-}
-
-function normalizeExcelDate(dateVal) {
-  if (!dateVal) return '';
-  const str = String(dateVal).trim();
-  if (/^\d{5}$/.test(str)) {
-    const d = new Date(new Date(1899, 11, 30).getTime() + (parseInt(str) * 86400000));
-    return d.toISOString().split('T')[0];
-  }
-  return str;
 }
 
 function getStudentSource(d) {
@@ -1010,7 +1023,7 @@ function confirmClientExcelUpload() {
           if (['name','studentname','fullname','student'].includes(k)) st.name = val;
           else if (['class','grade','std','standard'].includes(k)) st.class = normalizeClass(val);
           else if (['roll','rollno','rollnumber','sn','rollnum'].includes(k)) st.roll = val;
-          else if (['dob','dateofbirth','birthdate'].includes(k)) st.dob = normalizeExcelDate(val);
+          else if (['dob','dateofbirth','birthdate'].includes(k)) st.dob = formatDateForInput(val);
           else if (['mobile','mobileno','mob','phone','phonenumber','contact','contactno'].includes(k)) st.mobile = val;
           else if (['blood','bloodgroup','bg'].includes(k)) st.bloodGroup = val;
           else if (['father','fathername','fathersname'].includes(k)) st.father = val;
@@ -1072,7 +1085,7 @@ function confirmClientExcelUpload() {
   reader.readAsArrayBuffer(file);
 }
 
-/* ================= SCHOOL DETAIL & REALTIME STUDENT SYNC (FIXED FOR EXCEL & MANUAL) ================= */
+/* ================= SCHOOL DETAIL & REALTIME STUDENT SYNC ================= */
 function showDashboard() {
   if (unsubscribeStudents) { unsubscribeStudents(); unsubscribeStudents = null; }
   if (unsubscribeSchoolDoc) { unsubscribeSchoolDoc(); unsubscribeSchoolDoc = null; }
@@ -1118,7 +1131,6 @@ function openSchoolDetail(udise) {
       if (d.class) classes.add(normalizeClass(d.class));
     });
 
-    // Fallback check in case any Excel batch saved udise as a Number instead of String
     if (currentSchoolStudents.length === 0 && !isNaN(Number(cleanUdise))) {
       try {
         const numSnap = await db.collection('students').where('udise', '==', Number(cleanUdise)).get();
@@ -1127,13 +1139,11 @@ function openSchoolDetail(udise) {
           d._source = getStudentSource(d);
           currentSchoolStudents.push(d);
           if (d.class) classes.add(normalizeClass(d.class));
-          // Auto-heal numeric udise to string
           db.collection('students').doc(doc.id).update({ udise: cleanUdise }).catch(() => {});
         });
       } catch (e) {}
     }
 
-    // Sync counters accurately on the school doc
     const compCount = currentSchoolStudents.filter(st => st.finalised !== false).length;
     const pendCount = currentSchoolStudents.length - compCount;
     if (clientSchoolsMap[cleanUdise]) {
@@ -1216,7 +1226,7 @@ async function submitAutoLoadRequest() {
   alert("Auto-Load request sent to Master Admin!");
 }
 
-/* ================= STUDENT TABLE & CRUD ================= */
+/* ================= STUDENT TABLE & DYNAMICALLY FILTERED STUDENT MODAL ================= */
 function resetAndRenderTable() {
   tableVisibleLimit = 50;
   renderTable();
@@ -1293,7 +1303,24 @@ function renderTable() {
   }
 }
 
+// Hides unchosen fields in Client's Add/Edit Student Modal
+function applyClientStudentModalFields() {
+  const s = clientSchoolsMap[activeUdise];
+  const active = (s && s.customFields && s.customFields.length > 0)
+    ? s.customFields
+    : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  ['name', 'class', 'roll', 'dob', 'blood', 'phone', 'father', 'mother', 'address'].forEach(f => {
+    const wrap = document.getElementById('cw-' + f);
+    if (wrap) wrap.classList.toggle('hidden', !active.includes(f));
+  });
+  const noteEl = document.getElementById('clientModalFieldsNote');
+  if (noteEl) {
+    noteEl.textContent = `Showing configured fields: ${active.map(f => f.toUpperCase()).join(', ')}`;
+  }
+}
+
 function openStudentModal(id = null) {
+  applyClientStudentModalFields();
   croppedStudentBlob = null;
   const prev = document.getElementById('stPhotoPreview');
   if (id) {
@@ -1303,7 +1330,8 @@ function openStudentModal(id = null) {
     document.getElementById('stName').value = s.name || '';
     document.getElementById('stClass').value = normalizeClass(s.class);
     document.getElementById('stRoll').value = s.roll || '';
-    document.getElementById('stDob').value = s.dob || '';
+    // Automatically convert DD/MM/YYYY or Excel date to YYYY-MM-DD so date picker pre-fills!
+    document.getElementById('stDob').value = formatDateForInput(s.dob);
     document.getElementById('stBlood').value = s.bloodGroup || s.blood || '';
     document.getElementById('stPhone').value = s.mobile || s.phone || '';
     document.getElementById('stFather').value = s.father || '';
@@ -1379,7 +1407,7 @@ async function saveStudentRecord() {
       name,
       class: normalizeClass(document.getElementById('stClass').value.trim()),
       roll: document.getElementById('stRoll').value.trim(),
-      dob: document.getElementById('stDob').value.trim(),
+      dob: document.getElementById('stDob').value.trim() || formatDateForInput(existing.dob) || '',
       bloodGroup: document.getElementById('stBlood').value,
       mobile: document.getElementById('stPhone').value.trim(),
       father: document.getElementById('stFather').value.trim(),
