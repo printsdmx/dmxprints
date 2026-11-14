@@ -105,7 +105,7 @@
                 <p class="text-sm text-gray-500 mt-1">Log in with the UDISE & Password provided by your Agency / Client, or open your custom school link.</p>
             </div>
 
-            <!-- LOGIN FORM ONLY (NO SELF-REGISTRATION) -->
+            <!-- LOGIN FORM ONLY -->
             <div id="loginForm" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center gap-2">
                     <i class="fas fa-lock text-blue-600 text-base"></i> School Login
@@ -448,6 +448,28 @@
             }
         }).catch(() => {});
 
+        // Universal Date Parser: Converts DD/MM/YYYY, DD-MM-YYYY, or Excel serial numbers into YYYY-MM-DD for <input type="date">
+        function formatDateForInput(dateStr) {
+            if (!dateStr) return '';
+            dateStr = String(dateStr).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+            if (/^\d{5}$/.test(dateStr)) {
+                const excelEpoch = new Date(1899, 11, 30);
+                const dateObj = new Date(excelEpoch.getTime() + (parseInt(dateStr) * 86400000));
+                return dateObj.toISOString().split('T')[0];
+            }
+            const parts = dateStr.split(/[\/\-\.]/);
+            if (parts.length === 3) {
+                let p0 = parts[0].trim(), p1 = parts[1].trim(), p2 = parts[2].trim();
+                if (p0.length === 4) return `${p0}-${p1.padStart(2, '0')}-${p2.padStart(2, '0')}`;
+                if (p2.length === 2 || p2.length === 4) {
+                    let y = p2.length === 2 ? (Number(p2) > 50 ? "19" + p2 : "20" + p2) : p2;
+                    return `${y}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
+                }
+            }
+            return '';
+        }
+
         async function compressImageToDataUrl(fileOrBlob, maxW, maxH, quality = 0.82, mime = 'image/jpeg') {
             const img = new Image();
             const url = typeof fileOrBlob === 'string' ? fileOrBlob : URL.createObjectURL(fileOrBlob);
@@ -553,7 +575,6 @@
             checkUrlMagicLinkOrLoadSchool();
         };
 
-        // Force clear local storage & IndexedDB if school is deleted by Admin or Client
         function forceWipeDeletedSchoolSession() {
             if (unsubscribeRealtime) { unsubscribeRealtime(); unsubscribeRealtime = null; }
             if (unsubscribeSchool) { unsubscribeSchool(); unsubscribeSchool = null; }
@@ -601,7 +622,6 @@
                                 forceWipeDeletedSchoolSession();
                                 return;
                             }
-                            // Always sync latest customFields from Client/Admin on startup
                             savedSchool = {
                                 ...savedSchool,
                                 ...liveData,
@@ -619,7 +639,7 @@
             };
         }
 
-        /* ================= LOGIN ONLY (CLIENT-ONBOARDED SCHOOLS) ================= */
+        /* ================= LOGIN ONLY ================= */
         window.loginSchool = async function() {
             const udise = String(document.getElementById('loginUdise').value).trim();
             const pass = document.getElementById('loginPass').value.trim();
@@ -718,8 +738,6 @@
             document.getElementById('liveIndicator').classList.remove('hidden');
             const cleanUdise = String(currentSchoolData.udise).trim();
 
-            // Listen to school document: if deleted by Admin or Client, immediately wipe & logout!
-            // If Client/Admin changes customFields, immediately update student cards & forms!
             unsubscribeSchool = firestore.collection('schools').doc(cleanUdise).onSnapshot(doc => {
                 if (!doc.exists) {
                     forceWipeDeletedSchoolSession();
@@ -731,7 +749,7 @@
                 tx.objectStore('schools').put(currentSchoolData);
                 applyCustomFields();
                 updateSchoolHeaderUI();
-                renderList(); // Re-render student cards so newly toggled fields show up immediately
+                renderList();
             });
 
             unsubscribeRealtime = firestore.collection('students').where('udise', '==', cleanUdise).onSnapshot(snap => {
@@ -838,7 +856,6 @@
         document.getElementById('searchInput').addEventListener('input', applyFilters);
         document.getElementById('filterClass').addEventListener('change', applyFilters);
 
-        // Helper to extract student field value by customField key
         function getStudentFieldValue(s, fieldKey) {
             if (fieldKey === 'class') return normalizeClass(s.class);
             if (fieldKey === 'phone') return s.mobile || s.phone || '';
@@ -873,7 +890,6 @@
                     ? `<span class="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] font-bold"><i class="fas fa-exclamation-circle mr-0.5"></i>Tap Edit to Complete</span>`
                     : (!s.synced ? `<span class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded text-[10px] font-bold">Saved Offline</span>` : `<span class="text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded text-[10px] font-bold">Completed ✓</span>`);
 
-                // Dynamically build chips for EVERY field chosen by the Client/Admin (excluding 'name' which is the title)
                 let dynamicFieldsHtml = '';
                 activeFields.filter(f => f !== 'name').forEach(f => {
                     const val = getStudentFieldValue(s, f);
@@ -921,7 +937,8 @@
             document.getElementById('sFather').value = s.father || '';
             document.getElementById('sMother').value = s.mother || '';
             document.getElementById('sAddress').value = s.address || '';
-            document.getElementById('sDob').value = s.dob || '';
+            // Automatically convert DD/MM/YYYY or Excel date to YYYY-MM-DD so the date input shows the existing DOB!
+            document.getElementById('sDob').value = formatDateForInput(s.dob);
             document.getElementById('sBlood').value = s.bloodGroup || s.blood || '';
             if (s.photoBase64) setPreviewImage(s.photoBase64);
             else removePhoto();
@@ -1053,7 +1070,7 @@
                 class: document.getElementById('sClass').value,
                 roll: document.getElementById('sRoll').value.trim(),
                 mobile: document.getElementById('sPhone').value.trim(),
-                dob: document.getElementById('sDob').value,
+                dob: document.getElementById('sDob').value || formatDateForInput(existing.dob) || '',
                 bloodGroup: document.getElementById('sBlood').value,
                 father: document.getElementById('sFather').value.trim(),
                 mother: document.getElementById('sMother').value.trim(),
