@@ -436,21 +436,31 @@
   </div>
 </div>
 
-<!-- ================= EDIT STUDENT MODAL ================= -->
+<!-- ================= EDIT STUDENT MODAL (DYNAMICALLY FILTERED BY CHOSEN FIELDS) ================= -->
 <div id="editModal" class="modal">
   <div class="modal-content">
-    <h3 style="margin-top:0;">Edit Student Record</h3>
+    <h3 style="margin-top:0; margin-bottom:4px;">Edit Student Record</h3>
+    <div id="adminModalFieldsNote" style="font-size:11.5px; color:#0b53a0; font-weight:600; margin-bottom:14px;"></div>
     <input type="hidden" id="editId">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-      <div style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Full Name</label><input type="text" id="editName" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Class</label><input type="text" id="editClass" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Roll No</label><input type="text" id="editRoll" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">DOB</label><input type="text" id="editDob" placeholder="YYYY-MM-DD" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Blood Group</label><input type="text" id="editBlood" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Mobile</label><input type="text" id="editPhone" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Father's Name</label><input type="text" id="editFather" style="width:100%;"></div>
-      <div><label style="font-size:12px; font-weight:700;">Mother's Name</label><input type="text" id="editMother" style="width:100%;"></div>
-      <div style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Address</label><input type="text" id="editAddress" style="width:100%;"></div>
+      <div id="aw-name" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Full Name</label><input type="text" id="editName" style="width:100%;"></div>
+      <div id="aw-class"><label style="font-size:12px; font-weight:700;">Class</label><input type="text" id="editClass" style="width:100%;"></div>
+      <div id="aw-roll"><label style="font-size:12px; font-weight:700;">Roll No</label><input type="text" id="editRoll" style="width:100%;"></div>
+      <div id="aw-dob"><label style="font-size:12px; font-weight:700;">Date of Birth</label><input type="date" id="editDob" style="width:100%;"></div>
+      <div id="aw-blood">
+        <label style="font-size:12px; font-weight:700;">Blood Group</label>
+        <select id="editBlood" style="width:100%;">
+          <option value="">Select</option>
+          <option value="A+">A+</option><option value="A-">A-</option>
+          <option value="B+">B+</option><option value="B-">B-</option>
+          <option value="O+">O+</option><option value="O-">O-</option>
+          <option value="AB+">AB+</option><option value="AB-">AB-</option>
+        </select>
+      </div>
+      <div id="aw-phone"><label style="font-size:12px; font-weight:700;">Mobile</label><input type="text" id="editPhone" style="width:100%;"></div>
+      <div id="aw-father"><label style="font-size:12px; font-weight:700;">Father's Name</label><input type="text" id="editFather" style="width:100%;"></div>
+      <div id="aw-mother"><label style="font-size:12px; font-weight:700;">Mother's Name</label><input type="text" id="editMother" style="width:100%;"></div>
+      <div id="aw-address" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Address</label><input type="text" id="editAddress" style="width:100%;"></div>
     </div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px;">
       <button class="btn btn-warning" onclick="previewSingleStudentCard()"><i class="fas fa-eye"></i> Preview ID Card</button>
@@ -535,7 +545,6 @@ let clientsMap = JSON.parse(localStorage.getItem('adminClientsMapV3')) || {};
 let lastSyncId = Number(localStorage.getItem('adminLastSyncIdV3')) || 0;
 let cloudConfig = JSON.parse(localStorage.getItem('cloudStorageConfig')) || { provider: 'cloudinary', cloudName: 'borxawcr', uploadPreset: '', imgbbKey: '' };
 
-// Default first tab is 'clients'
 let activeMainTab = 'clients';
 let activeUdise = null;
 let currentSchoolStudents = [];
@@ -546,9 +555,31 @@ let selectedStudentIds = new Set();
 window.assets = { fontLoaded: false, aiModel: 'pending' };
 const globalImageCache = {};
 
-/* ================= UTILITIES & ODIA CONVERTERS ================= */
+/* ================= UTILITIES & DATE / ODIA CONVERTERS ================= */
 function escapeHtml(s) { return (!s) ? '' : String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c])); }
 function escapeJs(s) { return (!s) ? '' : String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+
+// Universal Date Parser: Converts DD/MM/YYYY, DD-MM-YYYY, or Excel serial numbers into YYYY-MM-DD
+function formatDateForInput(dateStr) {
+  if (!dateStr) return '';
+  dateStr = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{5}$/.test(dateStr)) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const dateObj = new Date(excelEpoch.getTime() + (parseInt(dateStr) * 86400000));
+    return dateObj.toISOString().split('T')[0];
+  }
+  const parts = dateStr.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    let p0 = parts[0].trim(), p1 = parts[1].trim(), p2 = parts[2].trim();
+    if (p0.length === 4) return `${p0}-${p1.padStart(2, '0')}-${p2.padStart(2, '0')}`;
+    if (p2.length === 2 || p2.length === 4) {
+      let y = p2.length === 2 ? (Number(p2) > 50 ? "19" + p2 : "20" + p2) : p2;
+      return `${y}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
+    }
+  }
+  return dateStr;
+}
 
 function normalizeClass(cls) {
   if (!cls) return "";
@@ -570,16 +601,6 @@ function toOdiaClass(str, mode) {
   if (mode !== 'odia') return norm;
   const odiaMap = { 'Shishuvatika':'ଶିଶୁ ବାଟିକା', '1':'ପ୍ରଥମ', '2':'ଦ୍ଵିତୀୟ', '3':'ତୃତୀୟ', '4':'ଚତୁର୍ଥ', '5':'ପଞ୍ଚମ', '6':'ଷଷ୍ଠ', '7':'ସପ୍ତମ', '8':'ଅଷ୍ଟମ', '9':'ନବମ', '10':'ଦଶମ' };
   return odiaMap[norm] || toOdiaDigits(norm, 'odia');
-}
-
-function normalizeExcelDate(dateVal) {
-  if (!dateVal) return '';
-  const str = String(dateVal).trim();
-  if (/^\d{5}$/.test(str)) {
-    const d = new Date(new Date(1899, 11, 30).getTime() + (parseInt(str) * 86400000));
-    return d.toISOString().split('T')[0];
-  }
-  return str;
 }
 
 function getStudentSource(d) {
@@ -715,7 +736,7 @@ function unlockAdmin() {
   loadAutoAssets();
   initializeFaceDetector();
   populateClientDropdowns();
-  switchMainTab('clients'); // Always start on Manage Clients tab
+  switchMainTab('clients');
   quickSync();
 }
 
@@ -781,7 +802,7 @@ async function quickSync() {
 
     sSnap.forEach(doc => {
       const d = doc.data();
-      const u = doc.id;
+      const u = String(doc.id).trim();
       freshSchools[u] = {
         udise: u,
         name: d.name || 'Unnamed School',
@@ -822,10 +843,11 @@ async function rebuildSchoolsMap() {
     studentSnap.forEach(doc => {
       const d = doc.data();
       if (!d.udise) return;
-      if (!counts[d.udise]) counts[d.udise] = { completedCount: 0, pendingCount: 0, printedCount: 0 };
-      if (d.finalised !== false) counts[d.udise].completedCount++;
-      else counts[d.udise].pendingCount++;
-      if (d.isPrinted) counts[d.udise].printedCount++;
+      const uStr = String(d.udise).trim();
+      if (!counts[uStr]) counts[uStr] = { completedCount: 0, pendingCount: 0, printedCount: 0 };
+      if (d.finalised !== false) counts[uStr].completedCount++;
+      else counts[uStr].pendingCount++;
+      if (d.isPrinted) counts[uStr].printedCount++;
     });
 
     for (const u of Object.keys(schoolsMap)) {
@@ -1077,7 +1099,8 @@ async function deleteClientDirect(clientId) {
 }
 
 async function wipeSchoolAndStudents(udise) {
-  const snap = await db.collection('students').where('udise', '==', udise).get();
+  const cleanUdise = String(udise).trim();
+  const snap = await db.collection('students').where('udise', '==', cleanUdise).get();
   const chunks = [];
   for (let i = 0; i < snap.docs.length; i += 400) chunks.push(snap.docs.slice(i, i + 400));
   for (const chunk of chunks) {
@@ -1085,9 +1108,9 @@ async function wipeSchoolAndStudents(udise) {
     chunk.forEach(d => batch.delete(d.ref));
     await batch.commit();
   }
-  await db.collection('schools').doc(udise).delete();
-  delete schoolsMap[udise];
-  localStorage.removeItem(`adminSchoolSync_${udise}`);
+  await db.collection('schools').doc(cleanUdise).delete();
+  delete schoolsMap[cleanUdise];
+  localStorage.removeItem(`adminSchoolSync_${cleanUdise}`);
 }
 
 /* ================= SCHOOL DETAIL & WRONG PASSWORD TRIGGER ================= */
@@ -1123,9 +1146,10 @@ function copySchoolMagicLink() {
 }
 
 async function openSchoolDetail(udise) {
-  const s = schoolsMap[udise];
+  const cleanUdise = String(udise).trim();
+  const s = schoolsMap[cleanUdise];
   if (!s) return;
-  activeUdise = udise;
+  activeUdise = cleanUdise;
   selectedStudentIds.clear();
 
   document.getElementById('viewUdiseHead').textContent = `UDISE: ${s.udise}`;
@@ -1140,7 +1164,7 @@ async function openSchoolDetail(udise) {
   let credHtml = '';
   if (s.appPassword) credHtml += `<div class="badge badge-ready" style="font-size:13px; padding:7px 12px;">🔑 School Link Pass: <b>${escapeHtml(s.appPassword)}</b></div>`;
   if (s.udisePass) {
-    credHtml += `<div class="badge badge-autoload" style="font-size:13px; padding:7px 12px;">🏛️ Official UDISE Pass (Admin Only): <b>${escapeHtml(s.udisePass)}</b> <button class="btn btn-danger" style="padding:3px 8px; font-size:11px; margin-left:8px;" onclick="markWrongPassword('${escapeJs(udise)}')">❌ Wrong Password</button></div>`;
+    credHtml += `<div class="badge badge-autoload" style="font-size:13px; padding:7px 12px;">🏛️ Official UDISE Pass (Admin Only): <b>${escapeHtml(s.udisePass)}</b> <button class="btn btn-danger" style="padding:3px 8px; font-size:11px; margin-left:8px;" onclick="markWrongPassword('${escapeJs(cleanUdise)}')">❌ Wrong Password</button></div>`;
   }
   document.getElementById('viewCredentials').innerHTML = credHtml;
 
@@ -1154,7 +1178,7 @@ async function openSchoolDetail(udise) {
   const tbody = document.querySelector('#studentTable tbody');
   tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:35px;">Loading students...</td></tr>`;
 
-  const snap = await db.collection('students').where('udise', '==', udise).get();
+  const snap = await db.collection('students').where('udise', '==', cleanUdise).get();
   currentSchoolStudents = [];
   const classes = new Set();
   snap.forEach(doc => {
@@ -1164,13 +1188,26 @@ async function openSchoolDetail(udise) {
     if (d.class) classes.add(normalizeClass(d.class));
   });
 
+  if (currentSchoolStudents.length === 0 && !isNaN(Number(cleanUdise))) {
+    try {
+      const numSnap = await db.collection('students').where('udise', '==', Number(cleanUdise)).get();
+      numSnap.forEach(doc => {
+        const d = doc.data();
+        d._source = getStudentSource(d);
+        currentSchoolStudents.push(d);
+        if (d.class) classes.add(normalizeClass(d.class));
+        db.collection('students').doc(doc.id).update({ udise: cleanUdise }).catch(() => {});
+      });
+    } catch (e) {}
+  }
+
   const compCount = currentSchoolStudents.filter(st => st.finalised !== false).length;
   const pendCount = currentSchoolStudents.length - compCount;
   const prtCount = currentSchoolStudents.filter(st => st.isPrinted).length;
   if (s.completedCount !== compCount || s.pendingCount !== pendCount || s.printedCount !== prtCount) {
     s.completedCount = compCount; s.pendingCount = pendCount; s.printedCount = prtCount;
     localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
-    db.collection('schools').doc(udise).update({ completedCount: compCount, pendingCount: pendCount, printedCount: prtCount }).catch(() => {});
+    db.collection('schools').doc(cleanUdise).update({ completedCount: compCount, pendingCount: pendCount, printedCount: prtCount }).catch(() => {});
   }
 
   const cSelect = document.getElementById('classFilterSelect');
@@ -1382,7 +1419,7 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId) {
           if (['name','studentname','fullname','student'].includes(k)) s.name = val;
           else if (['class','grade','std','standard'].includes(k)) s.class = normalizeClass(val);
           else if (['roll','rollno','rollnumber','sn','rollnum'].includes(k)) s.roll = val;
-          else if (['dob','dateofbirth','birthdate'].includes(k)) s.dob = normalizeExcelDate(val);
+          else if (['dob','dateofbirth','birthdate'].includes(k)) s.dob = formatDateForInput(val);
           else if (['mobile','mobileno','mob','phone','phonenumber','contact','contactno'].includes(k)) s.mobile = val;
           else if (['blood','bloodgroup','bg'].includes(k)) s.bloodGroup = val;
           else if (['father','fathername','fathersname'].includes(k)) s.father = val;
@@ -1397,7 +1434,8 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId) {
         return alert("No valid 'Name' column detected in Excel.");
       }
 
-      const existingSchool = schoolsMap[udise] || {};
+      const cleanUdise = String(udise).trim();
+      const existingSchool = schoolsMap[cleanUdise] || {};
       const chunks = [];
       for (let i = 0; i < parsed.length; i += 400) chunks.push(parsed.slice(i, i + 400));
 
@@ -1410,7 +1448,7 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId) {
             ...st,
             id,
             schoolName,
-            udise,
+            udise: cleanUdise,
             clientId: existingSchool.clientId || clientId || 'ADMIN',
             block: existingSchool.block || '',
             district: existingSchool.district || '',
@@ -1427,9 +1465,9 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId) {
       }
 
       const newPendingCount = (existingSchool.pendingCount || 0) + parsed.length;
-      await db.collection('schools').doc(udise).set({
+      await db.collection('schools').doc(cleanUdise).set({
         name: schoolName,
-        udise,
+        udise: cleanUdise,
         clientId: existingSchool.clientId || clientId || 'ADMIN',
         importStatus: 'manual',
         pendingCount: newPendingCount,
@@ -1439,7 +1477,7 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId) {
       document.getElementById('schoolExcelModal').style.display = 'none';
       alert(`Successfully uploaded ${parsed.length} students from Excel to ${schoolName}!`);
       await quickSync();
-      if (activeUdise === udise) openSchoolDetail(udise);
+      if (activeUdise === cleanUdise) openSchoolDetail(cleanUdise);
     } catch (err) {
       alert("Excel Upload Error: " + err.message);
     } finally {
@@ -1933,14 +1971,30 @@ async function bulkDeleteSelected() {
   renderTable();
 }
 
+function applyAdminStudentModalFields() {
+  const s = schoolsMap[activeUdise];
+  const active = (s && s.customFields && s.customFields.length > 0)
+    ? s.customFields
+    : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  ['name', 'class', 'roll', 'dob', 'blood', 'phone', 'father', 'mother', 'address'].forEach(f => {
+    const wrap = document.getElementById('aw-' + f);
+    if (wrap) wrap.classList.toggle('hidden', !active.includes(f));
+  });
+  const noteEl = document.getElementById('adminModalFieldsNote');
+  if (noteEl) {
+    noteEl.textContent = `Showing configured fields: ${active.map(f => f.toUpperCase()).join(', ')}`;
+  }
+}
+
 function openEditModal(id) {
+  applyAdminStudentModalFields();
   const s = currentSchoolStudents.find(x => String(x.id) === String(id));
   if (!s) return;
   document.getElementById('editId').value = s.id;
   document.getElementById('editName').value = s.name || '';
   document.getElementById('editClass').value = normalizeClass(s.class);
   document.getElementById('editRoll').value = s.roll || '';
-  document.getElementById('editDob').value = s.dob || '';
+  document.getElementById('editDob').value = formatDateForInput(s.dob);
   document.getElementById('editBlood').value = s.bloodGroup || s.blood || '';
   document.getElementById('editPhone').value = s.mobile || s.phone || '';
   document.getElementById('editFather').value = s.father || '';
@@ -1951,12 +2005,13 @@ function openEditModal(id) {
 
 async function saveStudentEdit() {
   const id = document.getElementById('editId').value;
+  const existing = currentSchoolStudents.find(x => String(x.id) === String(id)) || {};
   const updates = {
     name: document.getElementById('editName').value.trim(),
     class: document.getElementById('editClass').value.trim(),
     roll: document.getElementById('editRoll').value.trim(),
-    dob: document.getElementById('editDob').value.trim(),
-    bloodGroup: document.getElementById('editBlood').value.trim(),
+    dob: document.getElementById('editDob').value.trim() || formatDateForInput(existing.dob) || '',
+    bloodGroup: document.getElementById('editBlood').value,
     mobile: document.getElementById('editPhone').value.trim(),
     father: document.getElementById('editFather').value.trim(),
     mother: document.getElementById('editMother').value.trim(),
@@ -2017,7 +2072,7 @@ function openSchoolEdit(udise) {
 
 async function saveSchoolConfig() {
   const oldUdise = document.getElementById('esOldUdise').value;
-  const newUdise = document.getElementById('esUdise').value.trim();
+  const newUdise = String(document.getElementById('esUdise').value).trim();
   const customFields = Array.from(document.querySelectorAll('.es-field-cb:checked')).map(c => c.value);
   const updates = {
     clientId: document.getElementById('esClient').value,
