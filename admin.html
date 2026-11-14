@@ -42,7 +42,7 @@
     .card:hover { transform: translateY(-3px); border-color: #b3d4ff; box-shadow: 0 10px 24px rgba(0,123,255,0.08); }
     
     .badge { padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
-    .badge-submitted { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
     .badge-autoload { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
     .badge-printed { background: #d4edda; color: #155724; }
     .badge-ready { background: #cce5ff; color: #004085; }
@@ -62,7 +62,7 @@
     .action-bar { margin-top: 20px; padding: 16px 24px; background: white; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; bottom: 15px; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 100; flex-wrap: wrap; gap: 12px; border: 1px solid #eaeaea; }
 
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(3px); padding: 15px; }
-    .modal-content { background: white; padding: 26px; border-radius: 16px; width: 100%; max-width: 500px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.25); }
+    .modal-content { background: white; padding: 26px; border-radius: 16px; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.25); }
     .layout-editor-modal .modal-content { max-width: 1100px; padding: 22px; }
     .le-grid { display: flex; gap: 20px; height: 74vh; }
     .le-controls { flex: 1.1; overflow-y: auto; padding-right: 12px; border-right: 1px solid #eee; }
@@ -95,28 +95,26 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
       <div>
         <h1 style="margin:0; color:#0b53a0; font-weight:800;">Master Admin Control Center</h1>
-        <p style="margin:4px 0 0 0; font-size:13px; color:#64748b;">Zero-Read Counter Engine + Cloudinary CDN Active</p>
+        <p style="margin:4px 0 0 0; font-size:13px; color:#64748b;">Manage Clients, Schools, UDISE Auto-Loads & Final Print ZIPs</p>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn btn-outline" onclick="openStorageModal()"><i class="fas fa-cloud-upload-alt" style="color:#0284c7;"></i> Cloud Storage</button>
         <button class="btn btn-purple" onclick="openClientModal()"><i class="fas fa-user-plus"></i> + New Client</button>
-        <button class="btn btn-primary" onclick="openGlobalExcelModal()"><i class="fas fa-file-excel"></i> Bulk Excel Upload</button>
         <button class="btn btn-success" id="quickSyncBtn" onclick="quickSync()"><i class="fas fa-bolt"></i> Quick Sync</button>
         <button class="btn btn-outline" id="fullSyncBtn" onclick="rebuildSchoolsMap()"><i class="fas fa-sync"></i> Rebuild Counters</button>
         <button class="btn btn-warning" onclick="exportBackup()"><i class="fas fa-download"></i> Backup</button>
       </div>
     </div>
 
-    <!-- Main Navigation Tabs -->
+    <!-- Main Navigation Tabs (Manage Clients is 1st & Default) -->
     <div class="dashboard-tabs">
-      <button id="tabSchools" class="tab-btn active" onclick="switchMainTab('schools')"><i class="fas fa-school"></i> All Schools (<span id="countSchools">0</span>)</button>
-      <button id="tabPrintQueue" class="tab-btn" onclick="switchMainTab('queue')"><i class="fas fa-print"></i> Submitted Print Queue (<span id="countQueue">0</span>)</button>
+      <button id="tabClients" class="tab-btn active" onclick="switchMainTab('clients')"><i class="fas fa-users-cog"></i> Manage Clients (<span id="countClients">0</span>)</button>
+      <button id="tabSchools" class="tab-btn" onclick="switchMainTab('schools')"><i class="fas fa-school"></i> All Schools (<span id="countSchools">0</span>)</button>
       <button id="tabAutoLoad" class="tab-btn" onclick="switchMainTab('autoload')"><i class="fas fa-magic"></i> UDISE Auto-Load Requests (<span id="countAutoLoad">0</span>)</button>
-      <button id="tabClients" class="tab-btn" onclick="switchMainTab('clients')"><i class="fas fa-users-cog"></i> Manage Clients (<span id="countClients">0</span>)</button>
     </div>
 
-    <!-- School Filters -->
-    <div class="filter-bar" id="schoolFiltersBar">
+    <!-- School Filters (Hidden when on Manage Clients tab) -->
+    <div class="filter-bar hidden" id="schoolFiltersBar">
       <div style="flex:1; min-width:220px;">
         <label style="font-size:11.5px; font-weight:700; color:#555; display:block; margin-bottom:4px;">Search School / UDISE</label>
         <input type="text" id="dashSearch" placeholder="Search UDISE, School Name, or District..." oninput="renderDashboard()" style="width:100%;">
@@ -137,8 +135,9 @@
       </div>
     </div>
 
-    <div id="schoolGrid" class="grid-cards"></div>
-    <div id="clientGrid" class="grid-cards hidden"></div>
+    <!-- Grids (Client Grid shown first by default) -->
+    <div id="clientGrid" class="grid-cards"></div>
+    <div id="schoolGrid" class="grid-cards hidden"></div>
   </div>
 
   <!-- ================= SCHOOL DETAIL VIEW ================= -->
@@ -147,8 +146,7 @@
       <button class="btn btn-outline" onclick="showDashboard()"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn btn-outline" onclick="copySchoolMagicLink()"><i class="fas fa-link"></i> Copy School Magic Link</button>
-        <button class="btn btn-primary" onclick="triggerDirectSchoolExcel()"><i class="fas fa-file-excel"></i> Upload Excel to this School</button>
-        <input type="file" id="directSchoolExcelInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleDirectSchoolExcel(event)">
+        <button class="btn btn-primary" onclick="openSchoolExcelModal()"><i class="fas fa-file-excel"></i> Upload Excel to this School</button>
         <button class="btn btn-outline" onclick="openSchoolEdit(activeUdise)"><i class="fas fa-cog"></i> School Settings</button>
       </div>
     </div>
@@ -158,7 +156,6 @@
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span id="viewUdiseHead" style="color:#0b53a0; font-size:1.6rem; font-family:monospace; font-weight:800;">UDISE: 000000</span>
           <span id="viewClientBadge" class="badge badge-ready">Client: Direct</span>
-          <span id="viewPrintStatusBadge" class="badge badge-pending">Collecting Data</span>
         </div>
         <div id="viewSchoolNameMaster" style="color:#E85C0D; font-size:19px; font-weight:800; margin-top:6px;"></div>
         <div id="viewAddress" style="color:#555; font-size:14px; margin-top:6px;"></div>
@@ -186,7 +183,6 @@
         </div>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button id="togglePrintStatusBtn" class="btn btn-warning" onclick="togglePrintStatus()"><i class="fas fa-print"></i> Toggle Submitted Queue Status</button>
         <button class="btn btn-purple" style="padding:12px 20px; font-size:14.5px;" onclick="openLayoutEditor()"><i class="fas fa-paint-roller"></i> Open Drag & Drop Card Designer</button>
       </div>
     </div>
@@ -269,12 +265,43 @@
 
 <canvas id="cardCanvas" style="display:none;"></canvas>
 
+<!-- ================= SCHOOL-SPECIFIC EXCEL UPLOAD MODAL (WITH REQUIRED COLUMNS GUIDE) ================= -->
+<div id="schoolExcelModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-top:0; color:#0b53a0;"><i class="fas fa-file-excel"></i> Upload Excel to School</h3>
+    <div id="sxSchoolInfo" style="font-size:13.5px; font-weight:700; color:#ea580c; margin-bottom:12px;"></div>
+
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:14px; border-radius:12px; margin-bottom:16px;">
+      <div style="font-size:12.5px; font-weight:800; color:#166534; margin-bottom:8px;">
+        <i class="fas fa-list-check"></i> Required Excel Column Headers for This School:
+      </div>
+      <p style="font-size:12px; color:#15803d; margin:0 0 10px 0;">
+        The Client configured the following fields for this school. Make sure your Excel sheet's first row uses these column headers:
+      </p>
+      <div id="sxRequiredColumnsBadges" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+      <button type="button" class="btn btn-outline" style="width:100%; justify-content:center; border-color:#86efac; color:#166534; font-size:12.5px; padding:8px;" onclick="downloadSampleSchoolExcel()">
+        <i class="fas fa-download"></i> Download Matching Sample Excel Template (.xlsx)
+      </button>
+    </div>
+
+    <div style="margin-bottom:18px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:6px;">Select Completed Excel File (.xlsx, .xls, .csv) *</label>
+      <input type="file" id="sxFileInput" accept=".xlsx,.xls,.csv" style="width:100%; padding:10px; background:#f8fafc;">
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('schoolExcelModal').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" id="sxUploadBtn" onclick="confirmSchoolExcelUpload()"><i class="fas fa-cloud-upload-alt"></i> Upload Students Now</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= CLOUD IMAGE STORAGE MODAL ================= -->
 <div id="storageModal" class="modal">
   <div class="modal-content">
     <h3 style="margin-top:0; color:#0284c7;"><i class="fas fa-cloud-upload-alt"></i> Free Cloud Image Storage (Cloudinary)</h3>
     <p style="font-size:12.5px; color:#555; line-height:1.5;">
-      Configure your free Cloudinary account once here. It automatically syncs to all Client and School portals so photos and backgrounds upload straight to Cloudinary CDN without using Firebase Storage.
+      Configure your free Cloudinary account once here. It automatically syncs to all Client and School portals so photos and backgrounds upload straight to Cloudinary CDN.
     </p>
     <div style="margin-bottom:12px;">
       <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Storage Provider</label>
@@ -329,31 +356,6 @@
         <button class="btn btn-secondary" onclick="document.getElementById('clientModal').style.display='none'">Cancel</button>
         <button class="btn btn-purple" id="saveClientBtn" onclick="saveClient()">Save Client</button>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- ================= GLOBAL BULK EXCEL UPLOAD MODAL ================= -->
-<div id="globalExcelModal" class="modal">
-  <div class="modal-content">
-    <h3 style="margin-top:0; color:#0b53a0;"><i class="fas fa-file-excel"></i> Admin Bulk Excel Import</h3>
-    <p style="font-size:12.5px; color:#555; margin-bottom:16px;">Auto-detects Name, Class, Roll, DOB, Mobile, Blood Group, Father, Mother, and Address columns.</p>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Assign to Client (Optional)</label>
-      <select id="gxClient" style="width:100%;"><option value="ADMIN">Direct / Master Admin</option></select>
-    </div>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">11-Digit UDISE Code *</label>
-      <input type="text" id="gxUdise" maxlength="11" placeholder="Enter UDISE Code" style="width:100%; font-family:monospace;">
-    </div>
-    <div style="margin-bottom:16px;">
-      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">School Name *</label>
-      <input type="text" id="gxSchoolName" placeholder="Enter School Name" style="width:100%;">
-    </div>
-    <input type="file" id="gxFileInput" accept=".xlsx,.xls,.csv" style="width:100%; margin-bottom:18px;">
-    <div style="display:flex; justify-content:flex-end; gap:10px;">
-      <button class="btn btn-secondary" onclick="document.getElementById('globalExcelModal').style.display='none'">Cancel</button>
-      <button class="btn btn-primary" id="gxUploadBtn" onclick="processGlobalExcel()">Upload Excel Batch</button>
     </div>
   </div>
 </div>
@@ -513,6 +515,17 @@
 const CARD_W = 638, CARD_H = 1012;
 const ALL_AVAILABLE_FIELDS = ['name', 'class', 'roll', 'dob', 'blood', 'phone', 'father', 'mother', 'address'];
 const FIELD_LABELS = { name: 'NAME', class: 'CLASS', roll: 'ROLL NO', dob: 'D.O.B.', blood: 'BLOOD G.', phone: 'CONTACT', father: 'FATHER', mother: 'MOTHER', address: 'ADDRESS' };
+const EXCEL_HEADER_NAMES = {
+  name: 'Name',
+  class: 'Class',
+  roll: 'Roll No',
+  dob: 'DOB',
+  blood: 'Blood Group',
+  phone: 'Mobile',
+  father: 'Father Name',
+  mother: 'Mother Name',
+  address: 'Address'
+};
 window.odiaDigits = ['୦','୧','୨','୩','୪','୫','୬','୭','୮','୯'];
 
 const ADMIN_PASSWORD = "Anwesh@1998";
@@ -522,7 +535,8 @@ let clientsMap = JSON.parse(localStorage.getItem('adminClientsMapV3')) || {};
 let lastSyncId = Number(localStorage.getItem('adminLastSyncIdV3')) || 0;
 let cloudConfig = JSON.parse(localStorage.getItem('cloudStorageConfig')) || { provider: 'cloudinary', cloudName: 'borxawcr', uploadPreset: '', imgbbKey: '' };
 
-let activeMainTab = 'schools';
+// Default first tab is 'clients'
+let activeMainTab = 'clients';
 let activeUdise = null;
 let currentSchoolStudents = [];
 let filteredStudentsCache = [];
@@ -701,7 +715,7 @@ function unlockAdmin() {
   loadAutoAssets();
   initializeFaceDetector();
   populateClientDropdowns();
-  renderDashboard();
+  switchMainTab('clients'); // Always start on Manage Clients tab
   quickSync();
 }
 
@@ -761,7 +775,6 @@ async function quickSync() {
     localStorage.setItem('adminClientsMapV3', JSON.stringify(clientsMap));
     populateClientDropdowns();
 
-    // Fetch all active schools to ensure deleted schools are removed cleanly
     const sSnap = await db.collection('schools').get();
     const freshSchools = {};
     let maxId = lastSyncId;
@@ -777,7 +790,6 @@ async function quickSync() {
         phone: d.phone || '', signature: d.hmSignature || '',
         appPassword: d.appPassword || '', udisePass: d.udisePass || '',
         importStatus: d.importStatus || 'manual',
-        printStatus: d.printStatus || 'collecting',
         customFields: d.customFields || ['name', 'class', 'roll', 'dob', 'blood', 'phone'],
         layoutSettings: d.layoutSettings || null,
         privateTemplateUrl: d.privateTemplateUrl || null,
@@ -831,7 +843,6 @@ async function rebuildSchoolsMap() {
 
 function populateClientDropdowns() {
   const filterSel = document.getElementById('dashClientFilter');
-  const gxSel = document.getElementById('gxClient');
   const esSel = document.getElementById('esClient');
   const currFilter = filterSel.value;
 
@@ -845,20 +856,18 @@ function populateClientDropdowns() {
 
   filterSel.innerHTML = filterHtml;
   filterSel.value = currFilter || 'all';
-  if (gxSel) gxSel.innerHTML = assignHtml;
   if (esSel) esSel.innerHTML = assignHtml;
 }
 
 /* ================= DASHBOARD RENDERING ================= */
 function switchMainTab(tab) {
   activeMainTab = tab;
-  ['Schools', 'PrintQueue', 'AutoLoad', 'Clients'].forEach(t => {
+  ['Clients', 'Schools', 'AutoLoad'].forEach(t => {
     document.getElementById('tab' + t).classList.remove('active');
   });
-  if (tab === 'schools') document.getElementById('tabSchools').classList.add('active');
-  if (tab === 'queue') document.getElementById('tabPrintQueue').classList.add('active');
-  if (tab === 'autoload') document.getElementById('tabAutoLoad').classList.add('active');
   if (tab === 'clients') document.getElementById('tabClients').classList.add('active');
+  if (tab === 'schools') document.getElementById('tabSchools').classList.add('active');
+  if (tab === 'autoload') document.getElementById('tabAutoLoad').classList.add('active');
 
   document.getElementById('schoolFiltersBar').classList.toggle('hidden', tab === 'clients');
   document.getElementById('schoolGrid').classList.toggle('hidden', tab === 'clients');
@@ -868,10 +877,9 @@ function switchMainTab(tab) {
 
 function renderDashboard() {
   const allSchools = Object.values(schoolsMap);
-  document.getElementById('countSchools').textContent = allSchools.length;
-  document.getElementById('countQueue').textContent = allSchools.filter(s => s.printStatus === 'submitted').length;
-  document.getElementById('countAutoLoad').textContent = allSchools.filter(s => s.importStatus === 'pending').length;
   document.getElementById('countClients').textContent = Object.keys(clientsMap).length;
+  document.getElementById('countSchools').textContent = allSchools.length;
+  document.getElementById('countAutoLoad').textContent = allSchools.filter(s => s.importStatus === 'pending').length;
 
   if (activeMainTab === 'clients') {
     renderClientsGrid();
@@ -886,7 +894,6 @@ function renderDashboard() {
   const sortMode = document.getElementById('dashSort').value;
 
   let list = allSchools.filter(s => {
-    if (activeMainTab === 'queue' && s.printStatus !== 'submitted') return false;
     if (activeMainTab === 'autoload' && s.importStatus !== 'pending') return false;
     if (clientFilter !== 'all' && (s.clientId || 'ADMIN') !== clientFilter) return false;
     const match = (s.udise || '').toLowerCase().includes(search) ||
@@ -912,7 +919,6 @@ function renderDashboard() {
     card.className = 'card';
 
     let topBadges = `<span class="badge badge-ready"><i class="fas fa-user-tie"></i> ${escapeHtml(clientName)}</span>`;
-    if (s.printStatus === 'submitted') topBadges += ` <span class="badge badge-submitted"><i class="fas fa-print"></i> Submitted for Print</span>`;
     if (s.importStatus === 'pending') topBadges += ` <span class="badge badge-autoload"><i class="fas fa-hourglass-half"></i> Auto-Load Requested</span>`;
 
     let credsHtml = '';
@@ -939,7 +945,7 @@ function renderDashboard() {
         ${credsHtml}
       </div>
       <div style="margin-top:14px; padding-top:12px; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
-        <button class="btn btn-outline" style="padding:6px 10px; font-size:12px;" onclick="openSchoolDetail('${escapeJs(s.udise)}')"><i class="fas fa-folder-open"></i> Manage & Print</button>
+        <button class="btn btn-outline" style="padding:6px 10px; font-size:12px;" onclick="openSchoolDetail('${escapeJs(s.udise)}')"><i class="fas fa-folder-open"></i> Open & Print</button>
         <button class="btn btn-outline" style="padding:6px 10px; font-size:12px;" onclick="openSchoolEdit('${escapeJs(s.udise)}')"><i class="fas fa-cog"></i></button>
       </div>
     `;
@@ -953,7 +959,7 @@ function renderClientsGrid() {
   grid.innerHTML = '';
   const list = Object.values(clientsMap);
   if (list.length === 0) {
-    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:45px; background:white; border-radius:14px;">No clients added yet. Click "+ New Client" above to create one.</div>`;
+    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:45px; background:white; border-radius:14px;">No clients added yet. Click <b>"+ New Client"</b> above to create your first client account.</div>`;
     return;
   }
   list.forEach(c => {
@@ -962,7 +968,7 @@ function renderClientsGrid() {
     card.className = 'card';
     card.innerHTML = `
       <div>
-        <span class="badge badge-submitted">Client ID: ${escapeHtml(c.id)}</span>
+        <span class="badge badge-purple">Client ID: ${escapeHtml(c.id)}</span>
         <h3 style="margin:8px 0 4px 0; color:#1e293b;">${escapeHtml(c.name)}</h3>
         <div style="font-size:13px; color:#64748b;"><i class="fas fa-phone"></i> ${escapeHtml(c.phone || 'N/A')}</div>
         <div style="margin-top:10px; background:#f8fafc; padding:8px 10px; border-radius:8px; font-size:12.5px;">
@@ -973,7 +979,7 @@ function renderClientsGrid() {
         </div>
       </div>
       <div style="margin-top:14px; padding-top:12px; border-top:1px solid #eee; display:flex; justify-content:space-between; gap:6px;">
-        <button class="btn btn-outline" style="font-size:12px; padding:6px 10px;" onclick="filterByClient('${escapeJs(c.id)}')">View Schools</button>
+        <button class="btn btn-primary" style="font-size:12px; padding:6px 12px;" onclick="filterByClient('${escapeJs(c.id)}')"><i class="fas fa-school"></i> View Schools (${clientSchools.length})</button>
         <div style="display:flex; gap:6px;">
           <button class="btn btn-outline" style="font-size:12px; padding:6px 10px;" onclick="openClientModal('${escapeJs(c.id)}')"><i class="fas fa-pen"></i> Edit</button>
           <button class="btn btn-danger" style="font-size:12px; padding:6px 10px;" onclick="deleteClientDirect('${escapeJs(c.id)}')" title="Delete Client"><i class="fas fa-trash"></i></button>
@@ -1107,16 +1113,6 @@ async function markWrongPassword(udise) {
   openSchoolDetail(udise);
 }
 
-async function togglePrintStatus() {
-  if (!activeUdise || !schoolsMap[activeUdise]) return;
-  const s = schoolsMap[activeUdise];
-  const nextStatus = s.printStatus === 'submitted' ? 'collecting' : 'submitted';
-  await db.collection('schools').doc(activeUdise).update({ printStatus: nextStatus, lastModified: Date.now() });
-  s.printStatus = nextStatus;
-  localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
-  openSchoolDetail(activeUdise);
-}
-
 function copySchoolMagicLink() {
   const s = schoolsMap[activeUdise];
   if (!s) return;
@@ -1137,15 +1133,6 @@ async function openSchoolDetail(udise) {
   const cName = clientsMap[s.clientId]?.name || 'Direct Admin';
   document.getElementById('viewClientBadge').textContent = `Client: ${cName}`;
 
-  const pBadge = document.getElementById('viewPrintStatusBadge');
-  if (s.printStatus === 'submitted') {
-    pBadge.className = 'badge badge-submitted';
-    pBadge.innerHTML = '🖨️ Submitted for Print (Editing Open)';
-  } else {
-    pBadge.className = 'badge badge-ready';
-    pBadge.innerHTML = '🟢 Collecting Data';
-  }
-
   document.getElementById('viewAddress').textContent = `📍 ${s.block || ''} ${s.district || ''} - ${s.pin || ''}`;
   document.getElementById('viewContact').textContent = `📞 ${s.phone || 'N/A'}`;
   document.getElementById('viewActiveFields').innerHTML = `<b>Configured Fields:</b> ${(s.customFields || []).map(f => f.toUpperCase()).join(' • ')}`;
@@ -1165,9 +1152,8 @@ async function openSchoolDetail(udise) {
   document.getElementById('detailView').classList.remove('hidden');
 
   const tbody = document.querySelector('#studentTable tbody');
-  tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:35px;">Loading students from cache + delta sync...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:35px;">Loading students...</td></tr>`;
 
-  // Fetch live student list for this school so deletions/edits are always 100% accurate
   const snap = await db.collection('students').where('udise', '==', udise).get();
   currentSchoolStudents = [];
   const classes = new Set();
@@ -1178,7 +1164,6 @@ async function openSchoolDetail(udise) {
     if (d.class) classes.add(normalizeClass(d.class));
   });
 
-  // Sync school counters accurately
   const compCount = currentSchoolStudents.filter(st => st.finalised !== false).length;
   const pendCount = currentSchoolStudents.length - compCount;
   const prtCount = currentSchoolStudents.filter(st => st.isPrinted).length;
@@ -1257,7 +1242,7 @@ function renderTable() {
       : (s.isPrinted ? `<span class="badge badge-printed">Printed</span>` : `<span class="badge badge-ready">Ready</span>`);
 
     const srcBadge = s._source === 'excel'
-      ? `<span class="badge badge-submitted">Excel</span>`
+      ? `<span class="badge badge-purple">Excel</span>`
       : `<span class="badge badge-ready">Manual</span>`;
 
     tr.innerHTML = `
@@ -1322,36 +1307,61 @@ function updateSelectionUI() {
   document.getElementById('generateBtn').disabled = !hasSel;
 }
 
-/* ================= INTEGRATED EXCEL BULK UPLOADER ================= */
-function openGlobalExcelModal() {
-  document.getElementById('gxUdise').value = '';
-  document.getElementById('gxSchoolName').value = '';
-  document.getElementById('gxFileInput').value = '';
-  document.getElementById('globalExcelModal').style.display = 'flex';
+/* ================= SCHOOL-SPECIFIC EXCEL UPLOAD MODAL & TEMPLATE GENERATOR ================= */
+function openSchoolExcelModal() {
+  if (!activeUdise || !schoolsMap[activeUdise]) return;
+  const s = schoolsMap[activeUdise];
+  document.getElementById('sxSchoolInfo').textContent = `${s.name} (UDISE: ${s.udise})`;
+  document.getElementById('sxFileInput').value = '';
+
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const badgesContainer = document.getElementById('sxRequiredColumnsBadges');
+  badgesContainer.innerHTML = '';
+
+  fields.forEach(f => {
+    const colHeader = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    badgesContainer.innerHTML += `<span class="badge" style="background:#dcfce7; color:#166534; border:1px solid #86efac; font-size:12.5px; padding:6px 12px; font-family:monospace;">${escapeHtml(colHeader)}</span>`;
+  });
+
+  document.getElementById('schoolExcelModal').style.display = 'flex';
 }
 
-function triggerDirectSchoolExcel() {
-  document.getElementById('directSchoolExcelInput').value = '';
-  document.getElementById('directSchoolExcelInput').click();
+function downloadSampleSchoolExcel() {
+  if (!activeUdise || !schoolsMap[activeUdise]) return;
+  const s = schoolsMap[activeUdise];
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+
+  const sampleRow = {};
+  fields.forEach(f => {
+    const colHeader = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    if (f === 'name') sampleRow[colHeader] = 'Student Full Name';
+    else if (f === 'class') sampleRow[colHeader] = '5';
+    else if (f === 'roll') sampleRow[colHeader] = '1';
+    else if (f === 'dob') sampleRow[colHeader] = '2014-05-15';
+    else if (f === 'blood') sampleRow[colHeader] = 'O+';
+    else if (f === 'phone') sampleRow[colHeader] = '9876543210';
+    else sampleRow[colHeader] = '';
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet([sampleRow]);
+  XLSX.utils.book_append_sheet(wb, ws, "Students_Template");
+  const safeName = (s.name || s.udise).replace(/[^a-zA-Z0-9]/g, '_');
+  XLSX.writeFile(wb, `${safeName}_${s.udise}_Excel_Template.xlsx`);
 }
 
-function handleDirectSchoolExcel(e) {
-  const file = e.target.files[0];
-  if (!file || !activeUdise || !schoolsMap[activeUdise]) return;
+function confirmSchoolExcelUpload() {
+  const file = document.getElementById('sxFileInput').files[0];
+  if (!file) return alert("Please select an Excel file (.xlsx, .xls, or .csv) first.");
+  if (!activeUdise || !schoolsMap[activeUdise]) return;
   const s = schoolsMap[activeUdise];
   parseAndUploadExcelFile(file, s.udise, s.name, s.clientId || 'ADMIN');
 }
 
-function processGlobalExcel() {
-  const clientId = document.getElementById('gxClient').value;
-  const udise = document.getElementById('gxUdise').value.trim();
-  const schoolName = document.getElementById('gxSchoolName').value.trim();
-  const file = document.getElementById('gxFileInput').files[0];
-  if (!udise || !schoolName || !file) return alert("Enter UDISE, School Name, and choose an Excel file.");
-  parseAndUploadExcelFile(file, udise, schoolName, clientId, true);
-}
+function parseAndUploadExcelFile(file, udise, schoolName, clientId) {
+  const btn = document.getElementById('sxUploadBtn');
+  btn.disabled = true; btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Uploading...";
 
-function parseAndUploadExcelFile(file, udise, schoolName, clientId, closeGlobalModal = false) {
   const reader = new FileReader();
   reader.onload = async function(evt) {
     try {
@@ -1359,7 +1369,10 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId, closeGlobalM
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.SheetNames[0];
       const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-      if (rows.length === 0) return alert("Excel sheet is empty!");
+      if (rows.length === 0) {
+        btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+        return alert("Excel sheet is empty!");
+      }
 
       const parsed = rows.map(row => {
         let s = { name: '', class: '', roll: '', dob: '', mobile: '', bloodGroup: '', father: '', mother: '', address: '' };
@@ -1377,9 +1390,12 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId, closeGlobalM
           else if (['address','homeaddress','village','addr'].includes(k)) s.address = val;
         }
         return s;
-      }).filter(s => s.name);
+      }).filter(s => s.name && s.name !== 'Student Full Name');
 
-      if (parsed.length === 0) return alert("No valid 'Name' column detected in Excel.");
+      if (parsed.length === 0) {
+        btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+        return alert("No valid 'Name' column detected in Excel.");
+      }
 
       const existingSchool = schoolsMap[udise] || {};
       const chunks = [];
@@ -1420,12 +1436,14 @@ function parseAndUploadExcelFile(file, udise, schoolName, clientId, closeGlobalM
         lastModified: Date.now()
       }, { merge: true });
 
-      alert(`Successfully uploaded ${parsed.length} students from Excel to UDISE ${udise}!`);
-      if (closeGlobalModal) document.getElementById('globalExcelModal').style.display = 'none';
+      document.getElementById('schoolExcelModal').style.display = 'none';
+      alert(`Successfully uploaded ${parsed.length} students from Excel to ${schoolName}!`);
       await quickSync();
       if (activeUdise === udise) openSchoolDetail(udise);
     } catch (err) {
       alert("Excel Upload Error: " + err.message);
+    } finally {
+      btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
     }
   };
   reader.readAsArrayBuffer(file);
