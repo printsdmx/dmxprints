@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Client Partner Portal - ID Cards Pro</title>
+
+  <!-- SheetJS, Firebase, Cropper.js, FontAwesome -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root { --primary: #4f46e5; --accent: #6b21a8; --bg: #f4f7f6; }
+    body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: var(--bg); color: #1e293b; margin: 0; }
+    .container { max-width: 1240px; margin: 0 auto; }
+    .hidden { display: none !important; }
+
+    .btn { padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: white; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+    .btn:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary { background: var(--primary); }
+    .btn-success { background: #16a34a; }
+    .btn-danger { background: #dc2626; }
+    .btn-warning { background: #f59e0b; color: #111; }
+    .btn-purple { background: #7e22ce; }
+    .btn-whatsapp { background: #25D366; color: white; }
+    .btn-secondary { background: #64748b; }
+    .btn-outline { background: white; border: 1px solid #cbd5e1; color: #334155; }
+    .btn-outline:hover { background: #f8fafc; }
+
+    input, select { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-size: 14px; box-sizing: border-box; }
+    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
+
+    .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+    .card { background: white; padding: 22px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; transition: 0.2s; }
+    .card:hover { transform: translateY(-3px); border-color: #a5b4fc; box-shadow: 0 10px 24px rgba(79,70,229,0.08); }
+
+    .badge { padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+    .badge-autoload { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .badge-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-printed { background: #dcfce7; color: #166534; }
+    .badge-ready { background: #e0e7ff; color: #3730a3; }
+
+    .filter-bar { background: #fff; padding: 16px 20px; border-radius: 14px; margin-bottom: 20px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .detail-header { background: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; border: 1px solid #e2e8f0; }
+    .config-panel { background: #f5f3ff; padding: 18px 22px; border-radius: 14px; margin-bottom: 20px; border: 1px solid #ddd6fe; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+
+    .table-container { background: white; padding: 16px; border-radius: 16px; overflow-x: auto; border: 1px solid #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { padding: 11px 10px; border-bottom: 1px solid #f1f5f9; text-align: left; vertical-align: middle; }
+    th { background: #f8fafc; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 11.5px; }
+    tr:hover td { background: #f8fafc; }
+    img.thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; border: 1px solid #cbd5e1; background: #f1f5f9; }
+
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(3px); padding: 15px; }
+    .modal-content { background: white; padding: 26px; border-radius: 16px; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.25); }
+    .layout-editor-modal .modal-content { max-width: 1100px; padding: 22px; }
+    .le-grid { display: flex; gap: 20px; height: 74vh; }
+    .le-controls { flex: 1.1; overflow-y: auto; padding-right: 12px; border-right: 1px solid #eee; }
+    .le-preview { flex: 0.9; display: flex; justify-content: center; align-items: center; background: #e2e8f0; border-radius: 12px; overflow: hidden; position: relative; }
+    .le-field-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px; margin-bottom: 10px; }
+    .le-field-box strong { display: block; font-size: 12px; color: #475569; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .le-inputs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; }
+    .le-inputs input[type="number"] { width: 62px; padding: 5px; }
+    .le-inputs input[type="color"] { width: 32px; height: 32px; padding: 0; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<!-- ================= CLIENT LOGIN SCREEN ================= -->
+<div id="loginScreen" style="position:fixed; inset:0; background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%); z-index:5000; display:flex; align-items:center; justify-content:center; padding:15px;">
+  <div style="background:white; padding:38px 32px; border-radius:20px; width:100%; max-width:370px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.35);">
+    <div style="font-size:42px; margin-bottom:10px;">🤝</div>
+    <h2 style="margin:0 0 6px 0; color:#312e81; font-weight:800;">Client Partner Portal</h2>
+    <p style="font-size:13px; color:#64748b; margin-bottom:24px;">Manage your schools, custom links & ID card layouts</p>
+    <input type="text" id="clientIdInput" placeholder="Client ID (Username)" style="width:100%; padding:13px; margin-bottom:12px; font-family:monospace; font-weight:700;">
+    <input type="password" id="clientPassInput" placeholder="Password" style="width:100%; padding:13px; margin-bottom:16px;">
+    <button id="clientLoginBtn" class="btn btn-primary" style="width:100%; justify-content:center; padding:13px; font-size:15px;" onclick="loginClient()">Login to Partner Portal</button>
+    <div id="clientLoginError" style="color:#dc2626; font-size:12.5px; margin-top:12px; font-weight:600; display:none;">Invalid Client ID or Password!</div>
+  </div>
+</div>
+
+<!-- ================= MAIN CLIENT PORTAL ================= -->
+<div class="container" id="mainContainer" style="display:none;">
+
+  <!-- DASHBOARD VIEW -->
+  <div id="dashboardView">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:12px; background:white; padding:18px 24px; border-radius:16px; border:1px solid #e2e8f0;">
+      <div>
+        <span class="badge badge-ready" id="headerClientIdBadge">Partner</span>
+        <h1 id="headerClientName" style="margin:4px 0 0 0; color:#1e293b; font-size:1.5rem; font-weight:800;">Client Dashboard</h1>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="openAddSchoolModal()"><i class="fas fa-plus-circle"></i> + Add New School & Generate Link</button>
+        <button class="btn btn-outline" onclick="loadClientSchools()"><i class="fas fa-sync"></i> Refresh</button>
+        <button class="btn btn-danger" onclick="logoutClient()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div style="flex:1; min-width:220px;">
+        <input type="text" id="dashSearch" placeholder="Search your schools by UDISE, Name, or District..." oninput="renderDashboard()" style="width:100%;">
+      </div>
+      <select id="dashStatusFilter" onchange="renderDashboard()">
+        <option value="all">All Schools</option>
+        <option value="autoload">Auto Updation Requested</option>
+      </select>
+    </div>
+
+    <div id="schoolGrid" class="grid-cards"></div>
+  </div>
+
+  <!-- SCHOOL DETAIL VIEW -->
+  <div id="detailView" class="hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+      <button class="btn btn-outline" onclick="showDashboard()"><i class="fas fa-arrow-left"></i> Back to My Schools</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="copySchoolMagicLink()"><i class="fas fa-copy"></i> Copy School Link</button>
+        <button class="btn btn-whatsapp" onclick="shareSchoolLinkWhatsApp()"><i class="fab fa-whatsapp"></i> Share Link to School</button>
+        <button class="btn btn-success" onclick="openClientExcelModal()"><i class="fas fa-file-excel"></i> Upload Excel to this School</button>
+        <button class="btn btn-outline" onclick="openAddSchoolModal(activeUdise)"><i class="fas fa-cog"></i> Edit School / Fields</button>
+        <button class="btn btn-danger" onclick="deleteCurrentSchool()"><i class="fas fa-trash"></i> Delete School</button>
+      </div>
+    </div>
+
+    <!-- Wrong UDISE Password Alert Banner -->
+    <div id="clientWrongPassBanner" class="hidden" style="background:#fee2e2; border:1px solid #f87171; padding:16px 20px; border-radius:14px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h4 style="margin:0; color:#991b1b; font-size:15px;"><i class="fas fa-exclamation-triangle"></i> Official UDISE Password Was Marked Incorrect by Admin!</h4>
+        <p style="margin:4px 0 0 0; font-size:13px; color:#b91c1c;">Admin could not auto-load student records because the UDISE password was wrong. Please re-enter or ask the school to re-submit.</p>
+      </div>
+      <button class="btn btn-danger" onclick="openAutoLoadModal()"><i class="fas fa-redo"></i> Re-Submit UDISE Auto-Load</button>
+    </div>
+
+    <div class="detail-header">
+      <div style="flex:1; min-width:280px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span id="viewUdiseHead" style="color:#4f46e5; font-size:1.55rem; font-family:monospace; font-weight:800;">UDISE: 000000</span>
+          <span class="badge badge-ready">🟢 Live Sync Active</span>
+          <span id="viewAutoLoadBadge" class="badge badge-autoload hidden">⏳ Auto Updation Requested by School</span>
+        </div>
+        <div id="viewSchoolName" style="color:#ea580c; font-size:19px; font-weight:800; margin-top:6px;"></div>
+        <div id="viewAddress" style="color:#475569; font-size:14px; margin-top:5px;"></div>
+        <div id="viewContact" style="color:#0284c7; font-weight:700; font-size:14px; margin-top:4px;"></div>
+        <div id="viewActiveFields" style="margin-top:10px; font-size:12.5px; color:#334155;"></div>
+        <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          <div style="background:#f1f5f9; padding:7px 12px; border-radius:8px; font-size:12.5px;">
+            🔗 <b>School Custom Link:</b> <span id="viewMagicLinkText" style="font-family:monospace; color:#4f46e5;"></span>
+          </div>
+          <button class="btn btn-outline" style="padding:6px 12px; font-size:12px;" onclick="openAutoLoadModal()"><i class="fas fa-magic" style="color:#7e22ce;"></i> Request Admin UDISE Auto-Load</button>
+        </div>
+      </div>
+
+      <div style="text-align:right; background:#f8fafc; padding:12px 16px; border-radius:12px; border:1px solid #e2e8f0;">
+        <small style="font-weight:700; color:#64748b; display:block;">HM Signature</small>
+        <img id="viewHmSign" style="height:55px; margin-top:6px; object-fit:contain; border:1px dashed #cbd5e1; background:#fff; padding:4px; border-radius:6px;" src="" alt="No Sign" crossorigin="anonymous">
+      </div>
+    </div>
+
+    <!-- Client Drag & Drop Card Designer Bar -->
+    <div class="config-panel">
+      <div>
+        <h3 style="margin:0; color:#6b21a8; font-size:16px;"><i class="fas fa-paint-roller"></i> ID Card Layout Designer</h3>
+        <p style="margin:4px 0 0 0; font-size:12.5px; color:#555;">Upload your custom card background and drag & drop text/photo coordinates. All changes sync live with Admin!</p>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <input id="fontInput" type="file" accept=".ttf,.otf" class="hidden" onchange="loadCustomOdiaFont(event)">
+        <button class="btn btn-outline" onclick="document.getElementById('fontInput').click()"><i class="fas fa-font"></i> Load Odia Font (.ttf)</button>
+        <button class="btn btn-purple" style="padding:11px 18px;" onclick="openLayoutEditor()"><i class="fas fa-sliders-h"></i> Design Card Layout (Drag & Drop)</button>
+      </div>
+    </div>
+
+    <!-- Student Filter & Add Bar -->
+    <div class="filter-bar">
+      <input type="text" id="studentSearchInput" placeholder="Search student name or roll..." oninput="resetAndRenderTable()" style="flex:1; min-width:180px;">
+      <select id="classFilterSelect" onchange="resetAndRenderTable()">
+        <option value="all">All Classes</option>
+      </select>
+      <select id="reviewFilterSelect" onchange="resetAndRenderTable()">
+        <option value="all">All Status</option>
+        <option value="reviewed">Completed / Ready</option>
+        <option value="not_reviewed">Pending Photo / Review</option>
+      </select>
+      <button class="btn btn-primary" onclick="openStudentModal()"><i class="fas fa-user-plus"></i> + Add Student</button>
+    </div>
+
+    <!-- Student Table -->
+    <div class="table-container">
+      <table id="studentTable">
+        <thead>
+          <tr>
+            <th style="width:45px;">#</th>
+            <th style="width:55px;">Photo</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Roll</th>
+            <th>DOB</th>
+            <th>Blood</th>
+            <th>Contact</th>
+            <th>Father / Mother / Address</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th style="text-align:right;">Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="loadMoreContainer" style="text-align:center; padding:14px; display:none;">
+        <button class="btn btn-outline" onclick="loadMoreTableRows()">Load More Students (<span id="shownCountTxt"></span>)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<canvas id="cardCanvas" style="display:none;"></canvas>
+
+<!-- ================= CLIENT EXCEL UPLOAD MODAL ================= -->
+<div id="clientExcelModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-top:0; color:#16a34a;"><i class="fas fa-file-excel"></i> Upload Excel to School</h3>
+    <div id="cxSchoolInfo" style="font-size:13.5px; font-weight:700; color:#ea580c; margin-bottom:12px;"></div>
+
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:14px; border-radius:12px; margin-bottom:16px;">
+      <div style="font-size:12.5px; font-weight:800; color:#166534; margin-bottom:8px;">
+        <i class="fas fa-list-check"></i> Required Excel Column Headers for This School:
+      </div>
+      <p style="font-size:12px; color:#15803d; margin:0 0 10px 0;">
+        Make sure your Excel sheet's first row uses these exact column headers matching your selected fields:
+      </p>
+      <div id="cxRequiredColumnsBadges" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+      <button type="button" class="btn btn-outline" style="width:100%; justify-content:center; border-color:#86efac; color:#166534; font-size:12.5px; padding:8px;" onclick="downloadClientSampleExcel()">
+        <i class="fas fa-download"></i> Download Matching Sample Excel Template (.xlsx)
+      </button>
+    </div>
+
+    <div style="margin-bottom:18px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:6px;">Select Completed Excel File (.xlsx, .xls, .csv) *</label>
+      <input type="file" id="cxFileInput" accept=".xlsx,.xls,.csv" style="width:100%; padding:10px; background:#f8fafc;">
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('clientExcelModal').style.display='none'">Cancel</button>
+      <button class="btn btn-success" id="cxUploadBtn" onclick="confirmClientExcelUpload()"><i class="fas fa-cloud-upload-alt"></i> Upload Students Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ADD / EDIT SCHOOL MODAL ================= -->
+<div id="schoolModal" class="modal">
+  <div class="modal-content">
+    <h3 id="schoolModalTitle" style="margin-top:0; color:#4f46e5;"><i class="fas fa-school"></i> Add School & Configure Fields</h3>
+    <input type="hidden" id="smEditModeUdise">
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div>
+        <label style="font-size:12px; font-weight:700;">11-Digit UDISE / School Code *</label>
+        <input type="text" id="smUdise" maxlength="11" placeholder="e.g. 21290100101" style="width:100%; font-family:monospace; font-weight:700;">
+      </div>
+      <div>
+        <label style="font-size:12px; font-weight:700;">School Link Password *</label>
+        <input type="text" id="smPass" placeholder="e.g. 12345" style="width:100%;">
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:12px; font-weight:700;">School Name *</label>
+        <input type="text" id="smName" placeholder="Enter Full School Name" style="width:100%;">
+      </div>
+      <div>
+        <label style="font-size:12px; font-weight:700;">Block / Address Line</label>
+        <input type="text" id="smBlock" placeholder="Block / Locality" style="width:100%;">
+      </div>
+      <div>
+        <label style="font-size:12px; font-weight:700;">District</label>
+        <input type="text" id="smDistrict" placeholder="District" style="width:100%;">
+      </div>
+      <div>
+        <label style="font-size:12px; font-weight:700;">Pin Code</label>
+        <input type="number" id="smPin" placeholder="Pin Code" style="width:100%;">
+      </div>
+      <div>
+        <label style="font-size:12px; font-weight:700;">School / HM Contact No *</label>
+        <input type="tel" id="smPhone" maxlength="10" placeholder="10-digit mobile" style="width:100%;">
+      </div>
+    </div>
+
+    <div style="background:#f5f3ff; border:1px solid #ddd6fe; padding:14px; border-radius:12px; margin-bottom:14px;">
+      <label style="font-size:12.5px; font-weight:800; color:#6b21a8; display:block; margin-bottom:4px;">Select Required Fields for School Link</label>
+      <p style="font-size:11.5px; color:#64748b; margin:0 0 10px 0;">The school will see and fill in all the fields you check below:</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; font-size:13px;" id="smFieldsGrid">
+        <label><input type="checkbox" class="sm-cb" value="name" checked disabled> Name *</label>
+        <label><input type="checkbox" class="sm-cb" value="class" checked> Class</label>
+        <label><input type="checkbox" class="sm-cb" value="roll" checked> Roll No</label>
+        <label><input type="checkbox" class="sm-cb" value="dob" checked> DOB</label>
+        <label><input type="checkbox" class="sm-cb" value="blood" checked> Blood Group</label>
+        <label><input type="checkbox" class="sm-cb" value="phone" checked> Contact No</label>
+        <label><input type="checkbox" class="sm-cb" value="father"> Father Name</label>
+        <label><input type="checkbox" class="sm-cb" value="mother"> Mother Name</label>
+        <label><input type="checkbox" class="sm-cb" value="address"> Address</label>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Headmaster Signature Image (Optional)</label>
+      <input type="file" id="smSignInput" accept="image/*" style="width:100%;">
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-top:12px; border-top:1px solid #eee;">
+      <button class="btn btn-danger" id="smDeleteSchoolBtn" onclick="deleteSchoolFromModal()" style="display:none;"><i class="fas fa-trash"></i> Delete School</button>
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="btn btn-secondary" onclick="document.getElementById('schoolModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" id="saveSchoolModalBtn" onclick="saveClientSchool()">Save School & Generate Link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= REQUEST UDISE AUTO-LOAD MODAL ================= -->
+<div id="autoLoadModal" class="modal">
+  <div class="modal-content" style="max-width:420px;">
+    <h3 style="margin-top:0; color:#6b21a8;"><i class="fas fa-magic"></i> Request UDISE Auto-Load</h3>
+    <p style="font-size:12.5px; color:#555; margin-bottom:14px;">Submit the school's official UDISE password below. Master Admin will extract the student list and load it into this school.</p>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px; font-weight:700;">UDISE Code</label>
+      <input type="text" id="alUdise" disabled style="width:100%; background:#f1f5f9; font-weight:700;">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px; font-weight:700;">Official UDISE Password *</label>
+      <input type="password" id="alPass1" placeholder="Enter UDISE Password" style="width:100%;">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px; font-weight:700;">Confirm UDISE Password *</label>
+      <input type="password" id="alPass2" placeholder="Re-enter UDISE Password" style="width:100%;">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('autoLoadModal').style.display='none'">Cancel</button>
+      <button class="btn btn-purple" onclick="submitAutoLoadRequest()">Submit to Admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ADD / EDIT STUDENT MODAL (DYNAMICALLY FILTERED BY CHOSEN FIELDS) ================= -->
+<div id="studentModal" class="modal">
+  <div class="modal-content">
+    <h3 id="studentModalTitle" style="margin-top:0; margin-bottom:4px;">Add / Edit Student</h3>
+    <div id="clientModalFieldsNote" style="font-size:11.5px; color:#4f46e5; font-weight:600; margin-bottom:14px;"></div>
+    <input type="hidden" id="stEditId">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div id="cw-name" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Full Name *</label><input type="text" id="stName" style="width:100%;"></div>
+      <div id="cw-class">
+        <label style="font-size:12px; font-weight:700;">Class</label>
+        <select id="stClass" style="width:100%;">
+          <option value="">Select Class</option>
+          <option value="Shishuvatika">Shishuvatika / Nursery</option>
+          <option value="1">Class 1</option>
+          <option value="2">Class 2</option>
+          <option value="3">Class 3</option>
+          <option value="4">Class 4</option>
+          <option value="5">Class 5</option>
+          <option value="6">Class 6</option>
+          <option value="7">Class 7</option>
+          <option value="8">Class 8</option>
+          <option value="9">Class 9</option>
+          <option value="10">Class 10</option>
+          <option value="11">Class 11</option>
+          <option value="12">Class 12</option>
+        </select>
+      </div>
+      <div id="cw-roll"><label style="font-size:12px; font-weight:700;">Roll No</label><input type="text" id="stRoll" style="width:100%;"></div>
+      <div id="cw-dob"><label style="font-size:12px; font-weight:700;">Date of Birth</label><input type="date" id="stDob" style="width:100%;"></div>
+      <div id="cw-blood">
+        <label style="font-size:12px; font-weight:700;">Blood Group</label>
+        <select id="stBlood" style="width:100%;">
+          <option value="">Select</option>
+          <option value="A+">A+</option><option value="A-">A-</option>
+          <option value="B+">B+</option><option value="B-">B-</option>
+          <option value="O+">O+</option><option value="O-">O-</option>
+          <option value="AB+">AB+</option><option value="AB-">AB-</option>
+        </select>
+      </div>
+      <div id="cw-phone"><label style="font-size:12px; font-weight:700;">Contact / Mobile</label><input type="tel" id="stPhone" style="width:100%;"></div>
+      <div id="cw-father"><label style="font-size:12px; font-weight:700;">Father's Name</label><input type="text" id="stFather" style="width:100%;"></div>
+      <div id="cw-mother"><label style="font-size:12px; font-weight:700;">Mother's Name</label><input type="text" id="stMother" style="width:100%;"></div>
+      <div id="cw-address" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Address</label><input type="text" id="stAddress" style="width:100%;"></div>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:10px; text-align:center; margin-bottom:14px;">
+      <input type="file" id="stPhotoInput" accept="image/*" class="hidden" onchange="openClientCropper(event)">
+      <button type="button" class="btn btn-outline" onclick="document.getElementById('stPhotoInput').click()"><i class="fas fa-camera"></i> Upload & Crop Student Photo</button>
+      <div style="margin-top:8px;">
+        <img id="stPhotoPreview" src="" style="width:80px; height:105px; object-fit:cover; border-radius:8px; display:none; margin:0 auto; border:2px solid #4f46e5;">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <button class="btn btn-warning" onclick="previewStudentCardFromModal()"><i class="fas fa-eye"></i> Preview Card</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" onclick="document.getElementById('studentModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" id="saveStudentBtn" onclick="saveStudentRecord()">Save Student</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CROPPER MODAL -->
+<div id="cropperModal" class="modal" style="z-index:3000;">
+  <div class="modal-content" style="max-width:420px;">
+    <h3 style="margin-top:0;">Crop Student Photo (3:4)</h3>
+    <div style="max-height:55vh; overflow:hidden; background:#000; border-radius:8px;">
+      <img id="cropperImg" src="" style="max-width:100%;">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+      <button class="btn btn-secondary" onclick="closeClientCropper()">Cancel</button>
+      <button class="btn btn-primary" onclick="applyClientCrop()">Use Cropped Photo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= UNIVERSAL DRAG & DROP CARD DESIGNER MODAL ================= -->
+<div id="layoutEditorModal" class="modal layout-editor-modal">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h3 style="color:#6b21a8; margin:0;"><i class="fas fa-paint-roller"></i> Drag-and-Drop Card Designer</h3>
+        <span style="font-size:12px; color:#64748b;">Upload background & drag elements directly on the preview card</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="font-size:12.5px; font-weight:700; color:#4f46e5;">Card Language Mode:</label>
+        <select id="le_lang_mode" onchange="debouncedUpdateLivePreview()" style="border-color:#6b21a8; font-weight:700;">
+          <option value="english">Standard (As Typed / English)</option>
+          <option value="odia">Odia Mode (Auto Odia Digits & Classes)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="le-grid">
+      <div class="le-controls">
+        <div class="le-field-box" style="background:#f3f8ff; border-color:#cce5ff;">
+          <strong>1. Upload Custom Background Image (PNG/JPG - 638x1012px)</strong>
+          <div id="le_current_bg_info" style="margin-bottom:6px; font-size:12px; color:#004085;"></div>
+          <input type="file" id="plBgInput" accept="image/png, image/jpeg" style="width:100%; padding:6px;">
+        </div>
+
+        <div class="le-field-box">
+          <strong>2. School Header, Address & HM Signature</strong>
+          <div class="le-inputs" style="margin-bottom:6px;">
+            <label><input type="checkbox" id="le_header_show" onchange="debouncedUpdateLivePreview()"> Show School Name & Address</label>
+            <label>Y: <input type="number" id="le_header_y" value="55" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Color: <input type="color" id="le_header_color" value="#ffffff" onchange="debouncedUpdateLivePreview()"></label>
+          </div>
+          <div class="le-inputs">
+            <label><input type="checkbox" id="le_sign_show" onchange="debouncedUpdateLivePreview()"> Show HM Signature</label>
+            <label>X: <input type="number" id="le_sign_x" value="430" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Y: <input type="number" id="le_sign_y" value="850" oninput="debouncedUpdateLivePreview()"></label>
+          </div>
+        </div>
+
+        <div class="le-field-box">
+          <strong>3. Student Photo Box (Drag on Card)</strong>
+          <div class="le-inputs">
+            <label>X: <input type="number" id="le_photo_x" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Y: <input type="number" id="le_photo_y" oninput="debouncedUpdateLivePreview()"></label>
+            <label>W: <input type="number" id="le_photo_w" oninput="debouncedUpdateLivePreview()"></label>
+            <label>H: <input type="number" id="le_photo_h" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Shape:
+              <select id="le_photo_shape" onchange="debouncedUpdateLivePreview()" style="padding:4px; font-size:12px;">
+                <option value="rect">Rectangle</option>
+                <option value="circle">Circle</option>
+              </select>
+            </label>
+            <label>Radius: <input type="number" id="le_photo_r" oninput="debouncedUpdateLivePreview()" style="width:48px;"></label>
+            <label>Border: <input type="color" id="le_photo_border_color" value="#000000" onchange="debouncedUpdateLivePreview()"></label>
+            <label><input type="checkbox" id="le_photo_show" onchange="debouncedUpdateLivePreview()"> Show</label>
+          </div>
+        </div>
+
+        <div id="layoutFieldsContainer"></div>
+      </div>
+
+      <div class="le-preview">
+        <div style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.8); color:white; font-size:11px; padding:6px 10px; border-radius:6px; z-index:10; pointer-events:none;">
+          <i class="fas fa-arrows-alt"></i> Click & Drag Photo or Text on Card
+        </div>
+        <canvas id="plCanvas" style="max-height:96%; max-width:96%; box-shadow:0 12px 32px rgba(0,0,0,0.25); cursor:grab;"></canvas>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('layoutEditorModal').style.display='none'">Close</button>
+      <button class="btn btn-purple" id="saveLayoutBtn" onclick="saveLayoutSettings()"><i class="fas fa-save"></i> Save Card Coordinates</button>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div id="clientPreviewModal" class="modal" style="z-index:2600;">
+  <div class="modal-content" style="text-align:center; max-width:350px;">
+    <h3 style="margin-top:0;">ID Card Preview</h3>
+    <img id="clientPreviewImg" src="" style="width:100%; border-radius:10px; box-shadow:0 8px 25px rgba(0,0,0,0.25);">
+    <button class="btn btn-secondary" style="width:100%; margin-top:14px; justify-content:center;" onclick="document.getElementById('clientPreviewModal').style.display='none'">Close</button>
+  </div>
+</div>
+
+<script>
+const CARD_W = 638, CARD_H = 1012;
+const FIELD_LABELS = { name: 'NAME', class: 'CLASS', roll: 'ROLL NO', dob: 'D.O.B.', blood: 'BLOOD G.', phone: 'CONTACT', father: 'FATHER', mother: 'MOTHER', address: 'ADDRESS' };
+const EXCEL_HEADER_NAMES = {
+  name: 'Name',
+  class: 'Class',
+  roll: 'Roll No',
+  dob: 'DOB',
+  blood: 'Blood Group',
+  phone: 'Mobile',
+  father: 'Father Name',
+  mother: 'Mother Name',
+  address: 'Address'
+};
+window.odiaDigits = ['୦','୧','୨','୩','୪','୫','୬','୭','୮','୯'];
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA91DzdFor6pil6YPiY8bdAbsQICPwbdCw",
+  authDomain: "id-cards-e66e3.firebaseapp.com",
+  projectId: "id-cards-e66e3",
+  storageBucket: "id-cards-e66e3.firebasestorage.app",
+  messagingSenderId: "500450999702",
+  appId: "1:500450999702:web:27f0b1ef61653f2c3ab1b7",
+  measurementId: "G-CGTVC8FEHC"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+let cloudConfig = JSON.parse(localStorage.getItem('cloudStorageConfig')) || { provider: 'cloudinary', cloudName: 'borxawcr', uploadPreset: '', imgbbKey: '' };
+
+db.collection('settings').doc('storageConfig').get().then(doc => {
+  if (doc.exists) {
+    cloudConfig = doc.data();
+    localStorage.setItem('cloudStorageConfig', JSON.stringify(cloudConfig));
+  }
+}).catch(() => {});
+
+let currentClient = JSON.parse(localStorage.getItem('loggedClientSession')) || null;
+let clientSchoolsMap = {};
+let activeUdise = null;
+let currentSchoolStudents = [];
+let filteredStudents = [];
+let tableVisibleLimit = 50;
+let unsubscribeStudents = null;
+let unsubscribeSchoolDoc = null;
+let cropper = null;
+let croppedStudentBlob = null;
+window.fontLoaded = false;
+const globalImageCache = {};
+
+// Universal Date Parser: Converts DD/MM/YYYY, DD-MM-YYYY, or Excel serial numbers into YYYY-MM-DD
+function formatDateForInput(dateStr) {
+  if (!dateStr) return '';
+  dateStr = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{5}$/.test(dateStr)) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const dateObj = new Date(excelEpoch.getTime() + (parseInt(dateStr) * 86400000));
+    return dateObj.toISOString().split('T')[0];
+  }
+  const parts = dateStr.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    let p0 = parts[0].trim(), p1 = parts[1].trim(), p2 = parts[2].trim();
+    if (p0.length === 4) return `${p0}-${p1.padStart(2, '0')}-${p2.padStart(2, '0')}`;
+    if (p2.length === 2 || p2.length === 4) {
+      let y = p2.length === 2 ? (Number(p2) > 50 ? "19" + p2 : "20" + p2) : p2;
+      return `${y}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
+    }
+  }
+  return dateStr;
+}
+
+async function compressImageToDataUrl(fileOrBlob, maxW, maxH, quality = 0.82, mime = 'image/jpeg') {
+  const img = new Image();
+  const url = typeof fileOrBlob === 'string' ? fileOrBlob : URL.createObjectURL(fileOrBlob);
+  img.src = url;
+  await new Promise(r => { img.onload = r; img.onerror = r; });
+  if (typeof fileOrBlob !== 'string') URL.revokeObjectURL(url);
+  let w = img.width || maxW, h = img.height || maxH;
+  if (w > maxW || h > maxH) {
+    const ratio = Math.min(maxW / w, maxH / h);
+    w = Math.round(w * ratio); h = Math.round(h * ratio);
+  }
+  const cvs = document.createElement('canvas');
+  cvs.width = w; cvs.height = h;
+  cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+  return cvs.toDataURL(mime, quality);
+}
+
+async function uploadImageToCloud(fileOrDataUrl, folder = 'idcards', maxW = 638, maxH = 1012, mime = 'image/jpeg') {
+  const compressedDataUrl = await compressImageToDataUrl(fileOrDataUrl, maxW, maxH, 0.85, mime);
+  if (cloudConfig.provider === 'cloudinary') {
+    if (cloudConfig.cloudName && cloudConfig.uploadPreset) {
+      try {
+        const fd = new FormData();
+        fd.append('file', compressedDataUrl);
+        fd.append('upload_preset', cloudConfig.uploadPreset);
+        fd.append('folder', folder);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudConfig.cloudName}/image/upload`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.secure_url) return data.secure_url;
+      } catch (e) { console.warn("Cloudinary fallback to compressed image:", e); }
+    } else {
+      console.warn("Cloudinary upload preset is missing. Please configure it in storage-config.html.");
+    }
+  }
+  if (cloudConfig.provider === 'imgbb' && cloudConfig.imgbbKey) {
+    try {
+      const fd = new FormData();
+      fd.append('image', compressedDataUrl.split(',')[1]);
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${cloudConfig.imgbbKey}`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.data && data.data.url) return data.data.url;
+    } catch (e) { console.warn("ImgBB fallback:", e); }
+  }
+  return compressedDataUrl;
+}
+
+function escapeHtml(s) { return (!s) ? '' : String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c])); }
+function escapeJs(s) { return (!s) ? '' : String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+
+function normalizeClass(cls) {
+  if (!cls) return "";
+  const c = String(cls).toLowerCase().replace(/[\s\-\.]/g, '');
+  const map = { '1':'1','i':'1','01':'1','1st':'1','class1':'1', '2':'2','ii':'2','02':'2','2nd':'2','class2':'2', '3':'3','iii':'3','03':'3','3rd':'3','class3':'3', '4':'4','iv':'4','04':'4','4th':'4','class4':'4', '5':'5','v':'5','05':'5','5th':'5','class5':'5', '6':'6','vi':'6','06':'6','6th':'6','class6':'6', '7':'7','vii':'7','07':'7','7th':'7','class7':'7', '8':'8','viii':'8','08':'8','8th':'8','class8':'8', '9':'9','ix':'9','09':'9','9th':'9','class9':'9', '10':'10','x':'10','10th':'10','class10':'10' };
+  if (map[c]) return map[c];
+  if (['shishuvatika','shishu','nursery','lkg','ukg','pp1','pp2'].includes(c)) return "Shishuvatika";
+  return String(cls).trim();
+}
+
+function getStudentSource(d) {
+  if (d.source) return d.source;
+  if (d.batchId || d.isExcel || d.finalised === false) return 'excel';
+  return 'manual';
+}
+
+function toOdiaDigits(str, mode) {
+  if (str === undefined || str === null) return '';
+  if (mode !== 'odia') return String(str);
+  return String(str).replace(/\d/g, d => window.odiaDigits[d] || d);
+}
+
+function toOdiaClass(str, mode) {
+  const norm = normalizeClass(str);
+  if (mode !== 'odia') return norm;
+  const odiaMap = { 'Shishuvatika':'ଶିଶୁ ବାଟିକା', '1':'ପ୍ରଥମ', '2':'ଦ୍ଵିତୀୟ', '3':'ତୃତୀୟ', '4':'ଚତୁର୍ଥ', '5':'ପଞ୍ଚମ', '6':'ଷଷ୍ଠ', '7':'ସପ୍ତମ', '8':'ଅଷ୍ଟମ', '9':'ନବମ', '10':'ଦଶମ' };
+  return odiaMap[norm] || toOdiaDigits(norm, 'odia');
+}
+
+async function loadCachedImage(url) {
+  if (!url) return null;
+  if (globalImageCache[url]) return globalImageCache[url];
+  const img = new Image();
+  if (!url.startsWith('data:')) img.crossOrigin = "Anonymous";
+  img.src = url;
+  await new Promise(r => { img.onload = r; img.onerror = r; });
+  if (img.width > 0 && !url.startsWith('data:')) globalImageCache[url] = img;
+  return img;
+}
+
+/* ================= CLIENT AUTHENTICATION ================= */
+if (currentClient && currentClient.id) {
+  verifyActiveClientSession();
+}
+
+async function verifyActiveClientSession() {
+  try {
+    const doc = await db.collection('clients').doc(currentClient.id).get();
+    if (!doc.exists) {
+      alert("Your Client Account is no longer active. Please contact Admin.");
+      logoutClient();
+      return;
+    }
+    initClientPortal();
+  } catch (e) {
+    initClientPortal();
+  }
+}
+
+async function loginClient() {
+  const id = document.getElementById('clientIdInput').value.trim().toLowerCase();
+  const pass = document.getElementById('clientPassInput').value.trim();
+  const errEl = document.getElementById('clientLoginError');
+  const btn = document.getElementById('clientLoginBtn');
+  errEl.style.display = 'none';
+
+  if (!id || !pass) return;
+  btn.disabled = true; btn.textContent = "Verifying...";
+
+  try {
+    const doc = await db.collection('clients').doc(id).get();
+    if (!doc.exists || doc.data().password !== pass) {
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = "Login to Partner Portal";
+      return;
+    }
+    currentClient = { id: doc.id, ...doc.data() };
+    localStorage.setItem('loggedClientSession', JSON.stringify(currentClient));
+    initClientPortal();
+  } catch (e) {
+    alert("Connection error: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "Login to Partner Portal";
+  }
+}
+
+function logoutClient() {
+  localStorage.removeItem('loggedClientSession');
+  location.reload();
+}
+
+async function initClientPortal() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainContainer').style.display = 'block';
+  document.getElementById('headerClientIdBadge').textContent = `Client ID: ${currentClient.id}`;
+  document.getElementById('headerClientName').textContent = currentClient.name || 'Partner Dashboard';
+
+  try {
+    const resp = await fetch('OdiaFont.ttf');
+    if (resp.ok) {
+      const buf = await resp.arrayBuffer();
+      const font = new FontFace('OdiaFont', buf);
+      await font.load();
+      document.fonts.add(font);
+      window.fontLoaded = true;
+    }
+  } catch (e) {}
+
+  loadClientSchools();
+}
+
+async function loadCustomOdiaFont(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const buf = await f.arrayBuffer();
+  const font = new FontFace('OdiaFont', buf);
+  await font.load();
+  document.fonts.add(font);
+  window.fontLoaded = true;
+  alert("Odia Font Loaded Successfully!");
+}
+
+/* ================= LOAD CLIENT'S SCHOOLS & COUNTS ================= */
+async function loadClientSchools() {
+  const grid = document.getElementById('schoolGrid');
+  grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px;">Loading your schools...</div>`;
+
+  try {
+    const snap = await db.collection('schools').where('clientId', '==', currentClient.id).get();
+    clientSchoolsMap = {};
+    snap.forEach(doc => {
+      const d = doc.data();
+      const uStr = String(doc.id).trim();
+      clientSchoolsMap[uStr] = {
+        ...d,
+        udise: uStr,
+        completedCount: d.completedCount || 0,
+        pendingCount: d.pendingCount || 0,
+        printedCount: d.printedCount || 0
+      };
+    });
+    renderDashboard();
+  } catch (e) {
+    grid.innerHTML = `<div style="grid-column:1/-1; color:red; text-align:center;">Error loading schools: ${e.message}</div>`;
+  }
+}
+
+function getSchoolMagicUrl(udise, pass) {
+  const baseUrl = window.location.origin + window.location.pathname.replace('client.html', 'index.html');
+  return `${baseUrl}?u=${encodeURIComponent(udise)}&p=${encodeURIComponent(pass || '')}&c=${encodeURIComponent(currentClient.id)}`;
+}
+
+function renderDashboard() {
+  const grid = document.getElementById('schoolGrid');
+  grid.innerHTML = '';
+
+  const search = (document.getElementById('dashSearch').value || '').toLowerCase();
+  const statusFilter = document.getElementById('dashStatusFilter').value;
+
+  const list = Object.values(clientSchoolsMap).filter(s => {
+    if (statusFilter === 'autoload' && s.importStatus !== 'pending') return false;
+    return (s.udise || '').toLowerCase().includes(search) ||
+           (s.name || '').toLowerCase().includes(search) ||
+           (s.district || '').toLowerCase().includes(search);
+  });
+
+  list.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+
+  if (list.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:50px; background:white; border-radius:16px; border:1px dashed #cbd5e1; color:#64748b;">No schools found. Click <b>"+ Add New School & Generate Link"</b> above to onboard a school!</div>`;
+    return;
+  }
+
+  list.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    let badges = `<span class="badge badge-ready">🟢 Active School</span>`;
+    if (s.importStatus === 'pending') badges += ` <span class="badge badge-autoload">⏳ Auto Updation Requested by School</span>`;
+    if (s.importStatus === 'wrong_password') badges += ` <span class="badge badge-error">❌ Wrong UDISE Password</span>`;
+
+    card.innerHTML = `
+      <div onclick="openSchoolDetail('${escapeJs(s.udise)}')" style="cursor:pointer;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">${badges}</div>
+        <h3 style="margin:0; color:#4f46e5; font-family:monospace; font-size:1.25rem;">UDISE: ${escapeHtml(s.udise)}</h3>
+        <div style="color:#ea580c; font-weight:800; font-size:16px; margin-top:4px;">${escapeHtml(s.name)}</div>
+        <div style="font-size:12.5px; color:#64748b; margin-top:3px;">📍 ${escapeHtml(s.block || '')} ${escapeHtml(s.district || '')}</div>
+        <div style="margin-top:8px; font-size:11.5px; color:#475569;">
+          <b>Fields:</b> ${(s.customFields || []).map(f => f.toUpperCase()).join(', ')}
+        </div>
+        <div style="margin-top:12px; font-size:12.5px; display:flex; gap:12px; font-weight:700;">
+          <span style="color:#16a34a;"><i class="fas fa-check-circle"></i> ${s.completedCount || 0} Ready</span>
+          <span style="color:#d97706;"><i class="fas fa-clock"></i> ${s.pendingCount || 0} Pending</span>
+          <span style="color:#0284c7;"><i class="fas fa-print"></i> ${s.printedCount || 0} Printed</span>
+        </div>
+      </div>
+      <div style="margin-top:16px; padding-top:12px; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; gap:6px;">
+        <button class="btn btn-outline" style="font-size:12px; padding:6px 10px;" onclick="copyDirectLink('${escapeJs(s.udise)}')"><i class="fas fa-link"></i> Copy Link</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-primary" style="font-size:12px; padding:6px 12px;" onclick="openSchoolDetail('${escapeJs(s.udise)}')">Design & View</button>
+          <button class="btn btn-danger" style="font-size:12px; padding:6px 10px;" onclick="deleteSchoolByUdise('${escapeJs(s.udise)}')" title="Delete School"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function copyDirectLink(udise) {
+  const s = clientSchoolsMap[udise]; if (!s) return;
+  const link = getSchoolMagicUrl(s.udise, s.appPassword);
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(link).then(() => {
+      alert(`Custom Magic Link for ${s.name} copied!\n\n${link}`);
+    }).catch(() => {
+      prompt("Copy this link manually:", link);
+    });
+  } else {
+    prompt("Copy this link manually:", link);
+  }
+}
+
+/* ================= ONBOARD / EDIT / DELETE SCHOOL & CUSTOM FIELDS ================= */
+function openAddSchoolModal(editUdise = null) {
+  const delBtn = document.getElementById('smDeleteSchoolBtn');
+  if (editUdise && clientSchoolsMap[editUdise]) {
+    const s = clientSchoolsMap[editUdise];
+    document.getElementById('schoolModalTitle').innerHTML = `<i class="fas fa-edit"></i> Edit School & Required Fields`;
+    document.getElementById('smEditModeUdise').value = s.udise;
+    document.getElementById('smUdise').value = s.udise;
+    document.getElementById('smUdise').disabled = true;
+    document.getElementById('smPass').value = s.appPassword || '';
+    document.getElementById('smName').value = s.name || '';
+    document.getElementById('smBlock').value = s.block || '';
+    document.getElementById('smDistrict').value = s.district || '';
+    document.getElementById('smPin').value = s.pin || '';
+    document.getElementById('smPhone').value = s.phone || '';
+    const active = s.customFields || ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+    document.querySelectorAll('.sm-cb').forEach(cb => {
+      cb.checked = active.includes(cb.value) || cb.value === 'name';
+    });
+    delBtn.style.display = 'inline-flex';
+  } else {
+    document.getElementById('schoolModalTitle').innerHTML = `<i class="fas fa-school"></i> Add School & Configure Fields`;
+    document.getElementById('smEditModeUdise').value = '';
+    document.getElementById('smUdise').value = '';
+    document.getElementById('smUdise').disabled = false;
+    document.getElementById('smPass').value = Math.floor(100000 + Math.random() * 900000).toString();
+    document.getElementById('smName').value = '';
+    document.getElementById('smBlock').value = '';
+    document.getElementById('smDistrict').value = '';
+    document.getElementById('smPin').value = '';
+    document.getElementById('smPhone').value = '';
+    document.querySelectorAll('.sm-cb').forEach(cb => {
+      cb.checked = ['name', 'class', 'roll', 'dob', 'blood', 'phone'].includes(cb.value);
+    });
+    delBtn.style.display = 'none';
+  }
+  document.getElementById('smSignInput').value = '';
+  document.getElementById('schoolModal').style.display = 'flex';
+}
+
+async function saveClientSchool() {
+  const editModeUdise = document.getElementById('smEditModeUdise').value;
+  const udise = String(document.getElementById('smUdise').value).trim();
+  const appPassword = document.getElementById('smPass').value.trim();
+  const name = document.getElementById('smName').value.trim();
+  const block = document.getElementById('smBlock').value.trim();
+  const district = document.getElementById('smDistrict').value.trim();
+  const pin = document.getElementById('smPin').value.trim();
+  const phone = document.getElementById('smPhone').value.trim();
+  const customFields = Array.from(document.querySelectorAll('.sm-cb:checked')).map(cb => cb.value);
+
+  if (!udise || !appPassword || !name || !phone) return alert("Please fill UDISE, Password, School Name, and Contact Number.");
+
+  const btn = document.getElementById('saveSchoolModalBtn');
+  btn.disabled = true; btn.textContent = "Saving...";
+
+  try {
+    if (!editModeUdise) {
+      const check = await db.collection('schools').doc(udise).get();
+      if (check.exists) {
+        alert("This UDISE code is already registered in the system!");
+        btn.disabled = false; btn.textContent = "Save School & Generate Link";
+        return;
+      }
+    }
+
+    let hmSignature = clientSchoolsMap[udise]?.hmSignature || '';
+    const signFile = document.getElementById('smSignInput').files[0];
+    if (signFile) {
+      hmSignature = await uploadImageToCloud(signFile, `signatures/${udise}`, 400, 150, 'image/png');
+    }
+
+    const schoolObj = {
+      udise, name, appPassword, block, district, pin, phone, customFields, hmSignature,
+      clientId: currentClient.id,
+      clientName: currentClient.name,
+      importStatus: clientSchoolsMap[udise]?.importStatus || 'manual',
+      createdAt: clientSchoolsMap[udise]?.createdAt || Date.now(),
+      lastModified: Date.now()
+    };
+
+    await db.collection('schools').doc(udise).set(schoolObj, { merge: true });
+    clientSchoolsMap[udise] = { ...clientSchoolsMap[udise], ...schoolObj };
+    document.getElementById('schoolModal').style.display = 'none';
+
+    if (activeUdise === udise) openSchoolDetail(udise);
+    else renderDashboard();
+
+    if (!editModeUdise) {
+      const link = getSchoolMagicUrl(udise, appPassword);
+      navigator.clipboard.writeText(link);
+      alert(`School Created! Custom Magic Link copied to clipboard:\n\n${link}`);
+    }
+  } catch (e) {
+    alert("Error saving school: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "Save School & Generate Link";
+  }
+}
+
+async function deleteSchoolFromModal() {
+  const udise = document.getElementById('smEditModeUdise').value;
+  if (!udise) return;
+  await deleteSchoolByUdise(udise);
+  document.getElementById('schoolModal').style.display = 'none';
+}
+
+async function deleteCurrentSchool() {
+  if (!activeUdise) return;
+  await deleteSchoolByUdise(activeUdise);
+}
+
+async function deleteSchoolByUdise(udise) {
+  const s = clientSchoolsMap[udise];
+  if (!s) return;
+  if (!confirm(`WARNING: Are you sure you want to permanently delete "${s.name}" (UDISE: ${udise}) and ALL its student records?\n\nThe school will no longer be able to access or log in unless you register it again.`)) return;
+
+  try {
+    const snap = await db.collection('students').where('udise', '==', String(udise)).get();
+    const chunks = [];
+    for (let i = 0; i < snap.docs.length; i += 400) chunks.push(snap.docs.slice(i, i + 400));
+    for (const chunk of chunks) {
+      const batch = db.batch();
+      chunk.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    await db.collection('schools').doc(String(udise)).delete();
+    delete clientSchoolsMap[udise];
+    if (activeUdise === udise) showDashboard();
+    else renderDashboard();
+    alert("School and all its student data have been deleted.");
+  } catch (e) {
+    alert("Error deleting school: " + e.message);
+  }
+}
+
+/* ================= CLIENT EXCEL UPLOAD MODAL & TEMPLATE GENERATOR ================= */
+function openClientExcelModal() {
+  if (!activeUdise || !clientSchoolsMap[activeUdise]) return;
+  const s = clientSchoolsMap[activeUdise];
+  document.getElementById('cxSchoolInfo').textContent = `${s.name} (UDISE: ${s.udise})`;
+  document.getElementById('cxFileInput').value = '';
+
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const badgesContainer = document.getElementById('cxRequiredColumnsBadges');
+  badgesContainer.innerHTML = '';
+
+  fields.forEach(f => {
+    const colHeader = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    badgesContainer.innerHTML += `<span class="badge" style="background:#dcfce7; color:#166534; border:1px solid #86efac; font-size:12.5px; padding:6px 12px; font-family:monospace;">${escapeHtml(colHeader)}</span>`;
+  });
+
+  document.getElementById('clientExcelModal').style.display = 'flex';
+}
+
+function downloadClientSampleExcel() {
+  if (!activeUdise || !clientSchoolsMap[activeUdise]) return;
+  const s = clientSchoolsMap[activeUdise];
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+
+  const sampleRow = {};
+  fields.forEach(f => {
+    const colHeader = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    if (f === 'name') sampleRow[colHeader] = 'Student Full Name';
+    else if (f === 'class') sampleRow[colHeader] = '5';
+    else if (f === 'roll') sampleRow[colHeader] = '1';
+    else if (f === 'dob') sampleRow[colHeader] = '2014-05-15';
+    else if (f === 'blood') sampleRow[colHeader] = 'O+';
+    else if (f === 'phone') sampleRow[colHeader] = '9876543210';
+    else sampleRow[colHeader] = '';
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet([sampleRow]);
+  XLSX.utils.book_append_sheet(wb, ws, "Students_Template");
+  const safeName = (s.name || s.udise).replace(/[^a-zA-Z0-9]/g, '_');
+  XLSX.writeFile(wb, `${safeName}_${s.udise}_Excel_Template.xlsx`);
+}
+
+function confirmClientExcelUpload() {
+  const file = document.getElementById('cxFileInput').files[0];
+  if (!file) return alert("Please select an Excel file (.xlsx, .xls, or .csv) first.");
+  if (!activeUdise || !clientSchoolsMap[activeUdise]) return;
+  const s = clientSchoolsMap[activeUdise];
+
+  const btn = document.getElementById('cxUploadBtn');
+  btn.disabled = true; btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Uploading...";
+
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+      if (rows.length === 0) {
+        btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+        return alert("Excel sheet is empty!");
+      }
+
+      const parsed = rows.map(row => {
+        let st = { name: '', class: '', roll: '', dob: '', mobile: '', bloodGroup: '', father: '', mother: '', address: '' };
+        for (let key in row) {
+          let val = row[key] !== undefined ? String(row[key]).trim() : '';
+          let k = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (['name','studentname','fullname','student'].includes(k)) st.name = val;
+          else if (['class','grade','std','standard'].includes(k)) st.class = normalizeClass(val);
+          else if (['roll','rollno','rollnumber','sn','rollnum'].includes(k)) st.roll = val;
+          else if (['dob','dateofbirth','birthdate'].includes(k)) st.dob = formatDateForInput(val);
+          else if (['mobile','mobileno','mob','phone','phonenumber','contact','contactno'].includes(k)) st.mobile = val;
+          else if (['blood','bloodgroup','bg'].includes(k)) st.bloodGroup = val;
+          else if (['father','fathername','fathersname'].includes(k)) st.father = val;
+          else if (['mother','mothername','mothersname'].includes(k)) st.mother = val;
+          else if (['address','homeaddress','village','addr'].includes(k)) st.address = val;
+        }
+        return st;
+      }).filter(st => st.name && st.name !== 'Student Full Name');
+
+      if (parsed.length === 0) {
+        btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+        return alert("No valid 'Name' column detected in Excel.");
+      }
+
+      const cleanUdise = String(s.udise).trim();
+      const chunks = [];
+      for (let i = 0; i < parsed.length; i += 400) chunks.push(parsed.slice(i, i + 400));
+
+      let baseId = Date.now();
+      for (const chunk of chunks) {
+        const batch = db.batch();
+        chunk.forEach(st => {
+          const id = baseId++;
+          batch.set(db.collection('students').doc(String(id)), {
+            ...st,
+            id,
+            schoolName: s.name,
+            udise: cleanUdise,
+            clientId: currentClient.id,
+            block: s.block || '',
+            district: s.district || '',
+            pin: s.pin || '',
+            hmSignature: s.hmSignature || '',
+            photoBase64: null,
+            source: 'excel',
+            finalised: false,
+            createdAt: Date.now(),
+            lastModified: Date.now()
+          });
+        });
+        await batch.commit();
+      }
+
+      const newPendingCount = (s.pendingCount || 0) + parsed.length;
+      await db.collection('schools').doc(cleanUdise).set({
+        importStatus: 'manual',
+        pendingCount: newPendingCount,
+        lastModified: Date.now()
+      }, { merge: true });
+
+      document.getElementById('clientExcelModal').style.display = 'none';
+      alert(`Successfully uploaded ${parsed.length} students from Excel to ${s.name}!`);
+      if (activeUdise === cleanUdise) {
+        openSchoolDetail(cleanUdise);
+      } else {
+        loadClientSchools();
+      }
+    } catch (err) {
+      alert("Excel Upload Error: " + err.message);
+    } finally {
+      btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ================= SCHOOL DETAIL & REALTIME STUDENT SYNC ================= */
+function showDashboard() {
+  if (unsubscribeStudents) { unsubscribeStudents(); unsubscribeStudents = null; }
+  if (unsubscribeSchoolDoc) { unsubscribeSchoolDoc(); unsubscribeSchoolDoc = null; }
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('dashboardView').classList.remove('hidden');
+  activeUdise = null;
+  loadClientSchools();
+}
+
+function openSchoolDetail(udise) {
+  const cleanUdise = String(udise).trim();
+  const s = clientSchoolsMap[cleanUdise]; if (!s) return;
+  activeUdise = cleanUdise;
+
+  document.getElementById('dashboardView').classList.add('hidden');
+  document.getElementById('detailView').classList.remove('hidden');
+  refreshSchoolHeaderUI();
+
+  if (unsubscribeSchoolDoc) unsubscribeSchoolDoc();
+  unsubscribeSchoolDoc = db.collection('schools').doc(cleanUdise).onSnapshot(doc => {
+    if (!doc.exists) {
+      alert("This school has been deleted.");
+      delete clientSchoolsMap[cleanUdise];
+      showDashboard();
+      return;
+    }
+    clientSchoolsMap[cleanUdise] = { ...clientSchoolsMap[cleanUdise], ...doc.data(), udise: cleanUdise };
+    refreshSchoolHeaderUI();
+  });
+
+  const tbody = document.querySelector('#studentTable tbody');
+  tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:35px;">Loading students...</td></tr>`;
+
+  if (unsubscribeStudents) unsubscribeStudents();
+  unsubscribeStudents = db.collection('students').where('udise', '==', cleanUdise).onSnapshot(async snap => {
+    currentSchoolStudents = [];
+    const classes = new Set();
+
+    snap.forEach(doc => {
+      const d = doc.data();
+      d._source = getStudentSource(d);
+      currentSchoolStudents.push(d);
+      if (d.class) classes.add(normalizeClass(d.class));
+    });
+
+    if (currentSchoolStudents.length === 0 && !isNaN(Number(cleanUdise))) {
+      try {
+        const numSnap = await db.collection('students').where('udise', '==', Number(cleanUdise)).get();
+        numSnap.forEach(doc => {
+          const d = doc.data();
+          d._source = getStudentSource(d);
+          currentSchoolStudents.push(d);
+          if (d.class) classes.add(normalizeClass(d.class));
+          db.collection('students').doc(doc.id).update({ udise: cleanUdise }).catch(() => {});
+        });
+      } catch (e) {}
+    }
+
+    const compCount = currentSchoolStudents.filter(st => st.finalised !== false).length;
+    const pendCount = currentSchoolStudents.length - compCount;
+    if (clientSchoolsMap[cleanUdise]) {
+      clientSchoolsMap[cleanUdise].completedCount = compCount;
+      clientSchoolsMap[cleanUdise].pendingCount = pendCount;
+    }
+
+    const cSelect = document.getElementById('classFilterSelect');
+    const prev = cSelect.value;
+    cSelect.innerHTML = '<option value="all">All Classes</option>';
+    Array.from(classes).sort().forEach(c => {
+      cSelect.innerHTML += `<option value="${escapeHtml(c)}">Class ${escapeHtml(c)}</option>`;
+    });
+    if (Array.from(classes).includes(prev)) cSelect.value = prev;
+
+    resetAndRenderTable();
+  }, err => {
+    tbody.innerHTML = `<tr><td colspan="12" style="color:red; text-align:center; padding:25px;">Error loading students: ${err.message}</td></tr>`;
+  });
+}
+
+function refreshSchoolHeaderUI() {
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  document.getElementById('viewUdiseHead').textContent = `UDISE: ${s.udise}`;
+  document.getElementById('viewSchoolName').textContent = s.name;
+  document.getElementById('viewAddress').textContent = `📍 ${s.block || ''} ${s.district || ''} - ${s.pin || ''}`;
+  document.getElementById('viewContact').textContent = `📞 School Contact: ${s.phone || 'N/A'} | 🔑 Link Pass: ${s.appPassword || ''}`;
+  document.getElementById('viewActiveFields').innerHTML = `<b>Required Fields for School:</b> ${(s.customFields || []).map(f => f.toUpperCase()).join(' • ')}`;
+
+  const link = getSchoolMagicUrl(s.udise, s.appPassword);
+  document.getElementById('viewMagicLinkText').textContent = link;
+
+  const signImg = document.getElementById('viewHmSign');
+  signImg.src = s.hmSignature || '';
+  signImg.style.display = s.hmSignature ? 'inline-block' : 'none';
+
+  const autoBadge = document.getElementById('viewAutoLoadBadge');
+  if (s.importStatus === 'pending') autoBadge.classList.remove('hidden');
+  else autoBadge.classList.add('hidden');
+
+  const wrongBanner = document.getElementById('clientWrongPassBanner');
+  if (s.importStatus === 'wrong_password') wrongBanner.classList.remove('hidden');
+  else wrongBanner.classList.add('hidden');
+}
+
+function copySchoolMagicLink() {
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  const link = getSchoolMagicUrl(s.udise, s.appPassword);
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(link).then(() => {
+      alert("School Magic Link copied!\n\n" + link);
+    }).catch(() => {
+      prompt("Copy this link manually:", link);
+    });
+  } else {
+    prompt("Copy this link manually:", link);
+  }
+}
+
+function shareSchoolLinkWhatsApp() {
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  const link = getSchoolMagicUrl(s.udise, s.appPassword);
+  const msg = `Hello *${s.name}* (UDISE: *${s.udise}*),\n\nPlease click your custom link below to add or update student ID card data and photos:\n👉 ${link}\n\n*UDISE:* ${s.udise}\n*Password:* ${s.appPassword}`;
+  const phone = (s.phone && s.phone.length === 10) ? `91${s.phone}` : '';
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+/* ================= UDISE AUTO-LOAD REQUEST ================= */
+function openAutoLoadModal() {
+  document.getElementById('alUdise').value = activeUdise;
+  document.getElementById('alPass1').value = '';
+  document.getElementById('alPass2').value = '';
+  document.getElementById('autoLoadModal').style.display = 'flex';
+}
+
+async function submitAutoLoadRequest() {
+  const p1 = document.getElementById('alPass1').value.trim();
+  const p2 = document.getElementById('alPass2').value.trim();
+  if (!p1 || p1 !== p2) return alert("Passwords do not match! Please enter the exact UDISE password twice.");
+
+  await db.collection('schools').doc(activeUdise).update({
+    importStatus: 'pending',
+    udisePass: p1,
+    lastModified: Date.now()
+  });
+  document.getElementById('autoLoadModal').style.display = 'none';
+  alert("Auto-Load request sent to Master Admin!");
+}
+
+/* ================= STUDENT TABLE & DYNAMICALLY FILTERED STUDENT MODAL ================= */
+function resetAndRenderTable() {
+  tableVisibleLimit = 50;
+  renderTable();
+}
+
+function loadMoreTableRows() {
+  tableVisibleLimit += 50;
+  renderTable();
+}
+
+function renderTable() {
+  const search = (document.getElementById('studentSearchInput').value || '').toLowerCase();
+  const clsFilter = document.getElementById('classFilterSelect').value;
+  const revFilter = document.getElementById('reviewFilterSelect').value;
+
+  filteredStudents = currentSchoolStudents.filter(s => {
+    if (clsFilter !== 'all' && normalizeClass(s.class) !== clsFilter) return false;
+    if (revFilter === 'reviewed' && s.finalised === false) return false;
+    if (revFilter === 'not_reviewed' && s.finalised !== false) return false;
+    if (search) {
+      return (s.name || '').toLowerCase().includes(search) || String(s.roll || '').toLowerCase().includes(search);
+    }
+    return true;
+  });
+
+  filteredStudents.sort((a, b) => (parseInt(a.roll)||9999) - (parseInt(b.roll)||9999));
+
+  const tbody = document.querySelector('#studentTable tbody');
+  tbody.innerHTML = '';
+
+  if (filteredStudents.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:35px; color:#64748b;">No students found. Share the custom link with the school, upload an Excel file, or click "+ Add Student".</td></tr>`;
+    document.getElementById('loadMoreContainer').style.display = 'none';
+    return;
+  }
+
+  const slice = filteredStudents.slice(0, tableVisibleLimit);
+  slice.forEach((s, idx) => {
+    const tr = document.createElement('tr');
+    const badge = s.finalised === false
+      ? `<span class="badge badge-autoload">Pending Review</span>`
+      : (s.isPrinted ? `<span class="badge badge-printed">Printed</span>` : `<span class="badge badge-ready">Completed</span>`);
+
+    const srcBadge = s._source === 'excel'
+      ? `<span class="badge badge-purple">Excel</span>`
+      : `<span class="badge badge-ready">Manual</span>`;
+
+    tr.innerHTML = `
+      <td><b>${idx + 1}</b></td>
+      <td><img class="thumb" loading="lazy" src="${s.photoBase64 || ''}" crossorigin="anonymous" onerror="this.style.opacity=0.2"></td>
+      <td style="font-weight:700;">${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(normalizeClass(s.class))}</td>
+      <td>${escapeHtml(s.roll)}</td>
+      <td>${escapeHtml(s.dob)}</td>
+      <td>${escapeHtml(s.bloodGroup || s.blood || '-')}</td>
+      <td>${escapeHtml(s.mobile || s.phone || '-')}</td>
+      <td style="font-size:12px; color:#555;">${escapeHtml(s.father || '')} ${s.mother ? '• ' + escapeHtml(s.mother) : ''} ${s.address ? '• ' + escapeHtml(s.address) : ''}</td>
+      <td>${srcBadge}</td>
+      <td>${badge}</td>
+      <td style="text-align:right; white-space:nowrap;">
+        <button class="btn btn-outline" style="padding:5px 10px;" onclick="openStudentModal('${s.id}')"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-danger" style="padding:5px 10px;" onclick="deleteStudent('${s.id}')"><i class="fas fa-trash"></i></button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const moreBox = document.getElementById('loadMoreContainer');
+  if (filteredStudents.length > tableVisibleLimit) {
+    moreBox.style.display = 'block';
+    document.getElementById('shownCountTxt').textContent = `${slice.length} of ${filteredStudents.length}`;
+  } else {
+    moreBox.style.display = 'none';
+  }
+}
+
+// Hides unchosen fields in Client's Add/Edit Student Modal
+function applyClientStudentModalFields() {
+  const s = clientSchoolsMap[activeUdise];
+  const active = (s && s.customFields && s.customFields.length > 0)
+    ? s.customFields
+    : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  ['name', 'class', 'roll', 'dob', 'blood', 'phone', 'father', 'mother', 'address'].forEach(f => {
+    const wrap = document.getElementById('cw-' + f);
+    if (wrap) wrap.classList.toggle('hidden', !active.includes(f));
+  });
+  const noteEl = document.getElementById('clientModalFieldsNote');
+  if (noteEl) {
+    noteEl.textContent = `Showing configured fields: ${active.map(f => f.toUpperCase()).join(', ')}`;
+  }
+}
+
+function setClassSelectValue(selectId, rawVal) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const norm = normalizeClass(rawVal);
+  if (!norm) { sel.value = ''; return; }
+  let found = false;
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === norm || sel.options[i].value.toLowerCase() === String(rawVal).toLowerCase()) {
+      sel.selectedIndex = i;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    const opt = document.createElement('option');
+    opt.value = norm;
+    opt.textContent = `Class ${norm}`;
+    sel.appendChild(opt);
+    sel.value = norm;
+  }
+}
+
+function openStudentModal(id = null) {
+  applyClientStudentModalFields();
+  croppedStudentBlob = null;
+  const prev = document.getElementById('stPhotoPreview');
+  if (id) {
+    const s = currentSchoolStudents.find(x => String(x.id) === String(id));
+    if (!s) return;
+    document.getElementById('stEditId').value = s.id;
+    document.getElementById('stName').value = s.name || '';
+    setClassSelectValue('stClass', s.class);
+    document.getElementById('stRoll').value = s.roll || '';
+    // Automatically convert DD/MM/YYYY or Excel date to YYYY-MM-DD so date picker pre-fills!
+    document.getElementById('stDob').value = formatDateForInput(s.dob);
+    document.getElementById('stBlood').value = s.bloodGroup || s.blood || '';
+    document.getElementById('stPhone').value = s.mobile || s.phone || '';
+    document.getElementById('stFather').value = s.father || '';
+    document.getElementById('stMother').value = s.mother || '';
+    document.getElementById('stAddress').value = s.address || '';
+    if (s.photoBase64) { prev.src = s.photoBase64; prev.style.display = 'block'; }
+    else { prev.style.display = 'none'; }
+  } else {
+    document.getElementById('stEditId').value = '';
+    ['stName','stClass','stRoll','stDob','stBlood','stPhone','stFather','stMother','stAddress'].forEach(k => document.getElementById(k).value = '');
+    prev.style.display = 'none';
+  }
+  document.getElementById('studentModal').style.display = 'flex';
+}
+
+function openClientCropper(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = evt => {
+    const img = document.getElementById('cropperImg');
+    img.src = evt.target.result;
+    document.getElementById('cropperModal').style.display = 'flex';
+    setTimeout(() => {
+      if (cropper) cropper.destroy();
+      cropper = new Cropper(img, { aspectRatio: 3/4, viewMode: 1 });
+    }, 50);
+  };
+  r.readAsDataURL(f);
+}
+
+function closeClientCropper() {
+  if (cropper) { cropper.destroy(); cropper = null; }
+  document.getElementById('cropperModal').style.display = 'none';
+}
+
+function applyClientCrop() {
+  if (!cropper) return;
+  const cvs = cropper.getCroppedCanvas({ width: 300, height: 400, fillColor: '#fff' });
+  const dataUrl = cvs.toDataURL('image/jpeg', 0.82);
+  const prev = document.getElementById('stPhotoPreview');
+  prev.src = dataUrl; prev.style.display = 'block';
+  fetch(dataUrl).then(r => r.blob()).then(b => { croppedStudentBlob = b; closeClientCropper(); });
+}
+
+async function saveStudentRecord() {
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  const name = document.getElementById('stName').value.trim();
+  if (!name) return alert("Student Name is required!");
+
+  const btn = document.getElementById('saveStudentBtn');
+  btn.disabled = true; btn.textContent = "Saving...";
+
+  try {
+    const editId = document.getElementById('stEditId').value;
+    const id = editId ? Number(editId) : Date.now();
+    const existing = currentSchoolStudents.find(x => String(x.id) === String(id)) || {};
+
+    let photoUrl = existing.photoBase64 || null;
+    if (croppedStudentBlob) {
+      photoUrl = await uploadImageToCloud(croppedStudentBlob, `students/${activeUdise}`, 300, 400, 'image/jpeg');
+    }
+
+    const record = {
+      ...existing,
+      id,
+      udise: String(activeUdise).trim(),
+      clientId: currentClient.id,
+      schoolName: s.name,
+      block: s.block || '',
+      district: s.district || '',
+      pin: s.pin || '',
+      hmSignature: s.hmSignature || '',
+      name,
+      class: normalizeClass(document.getElementById('stClass').value.trim()),
+      roll: document.getElementById('stRoll').value.trim(),
+      dob: document.getElementById('stDob').value.trim() || formatDateForInput(existing.dob) || '',
+      bloodGroup: document.getElementById('stBlood').value,
+      mobile: document.getElementById('stPhone').value.trim(),
+      father: document.getElementById('stFather').value.trim(),
+      mother: document.getElementById('stMother').value.trim(),
+      address: document.getElementById('stAddress').value.trim(),
+      photoBase64: photoUrl,
+      finalised: true,
+      synced: true,
+      lastModified: Date.now()
+    };
+
+    await db.collection('students').doc(String(id)).set(record, { merge: true });
+    const isNew = !editId;
+    const wasPending = editId && existing.finalised === false;
+    if (isNew || wasPending) {
+      const compInc = firebase.firestore.FieldValue.increment(1);
+      const pendInc = wasPending ? firebase.firestore.FieldValue.increment(-1) : firebase.firestore.FieldValue.increment(0);
+      await db.collection('schools').doc(activeUdise).update({ completedCount: compInc, pendingCount: pendInc, lastModified: Date.now() });
+    }
+    document.getElementById('studentModal').style.display = 'none';
+  } catch (e) {
+    alert("Error saving student: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "Save Student";
+  }
+}
+
+async function deleteStudent(id) {
+  if (!confirm("Permanently delete this student?")) return;
+  const existing = currentSchoolStudents.find(x => String(x.id) === String(id));
+  await db.collection('students').doc(String(id)).delete();
+  if (existing) {
+    const field = existing.finalised === false ? 'pendingCount' : 'completedCount';
+    await db.collection('schools').doc(activeUdise).update({ [field]: firebase.firestore.FieldValue.increment(-1), lastModified: Date.now() });
+  }
+}
+
+/* ================= UNIVERSAL DRAG & DROP CARD STUDIO (CLIENT SIDE) ================= */
+const canvas = document.getElementById('cardCanvas');
+const ctx = canvas.getContext('2d');
+
+function getDefaultLayout(customFields) {
+  const layout = {
+    langMode: 'english',
+    header: { show: true, y: 55, color: '#ffffff' },
+    sign: { show: true, x: 430, y: 850 },
+    photo: { x: 200, y: 190, w: 238, h: 300, shape: 'rect', radius: 10, borderColor: '#000000', show: true }
+  };
+  let y = 550;
+  (customFields || ['name', 'class', 'roll', 'dob', 'blood', 'phone']).forEach(f => {
+    layout[f] = {
+      x: f === 'name' ? Math.round(CARD_W / 2) : 60,
+      y: y,
+      size: f === 'name' ? 36 : 26,
+      color: '#1e293b',
+      align: f === 'name' ? 'center' : 'left',
+      showLabel: f !== 'name',
+      show: true
+    };
+    y += 46;
+  });
+  return layout;
+}
+
+async function drawUnifiedCard(s, sm) {
+  canvas.width = CARD_W; canvas.height = CARD_H;
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  const fields = (sm && sm.customFields && sm.customFields.length > 0) ? sm.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const layout = (sm && sm.layoutSettings) ? sm.layoutSettings : getDefaultLayout(fields);
+  const langMode = layout.langMode || 'english';
+  const fontFamily = (langMode === 'odia' && window.fontLoaded) ? 'OdiaFont, sans-serif' : 'Arial, sans-serif';
+
+  if (sm && sm.privateTemplateUrl) {
+    const bgImg = await loadCachedImage(sm.privateTemplateUrl);
+    if (bgImg && bgImg.width > 0) ctx.drawImage(bgImg, 0, 0, CARD_W, CARD_H);
+  } else {
+    ctx.fillStyle = '#4f46e5';
+    ctx.fillRect(0, 0, CARD_W, 155);
+  }
+
+  if (!layout.header || layout.header.show !== false) {
+    const hy = parseInt(layout.header?.y) || 55;
+    ctx.fillStyle = layout.header?.color || '#ffffff';
+    ctx.textAlign = 'center';
+    const sName = sm?.name || s.schoolName || 'School Name';
+    let fs = 38;
+    ctx.font = `bold ${fs}px ${fontFamily}`;
+    while (ctx.measureText(sName).width > 580 && fs > 14) { fs--; ctx.font = `bold ${fs}px ${fontFamily}`; }
+    ctx.fillText(sName, CARD_W / 2, hy);
+
+    const addrParts = [sm?.block || s.block, sm?.district || s.district].filter(Boolean).join(', ');
+    if (addrParts) {
+      ctx.font = `24px ${fontFamily}`;
+      ctx.fillText(addrParts + (sm?.pin ? ' - ' + toOdiaDigits(sm.pin, langMode) : ''), CARD_W / 2, hy + 36);
+    }
+    if (sm?.udise) {
+      ctx.font = `21px ${fontFamily}`;
+      ctx.fillText('UDISE: ' + toOdiaDigits(sm.udise, langMode), CARD_W / 2, hy + 68);
+    }
+  }
+
+  if (layout.photo && layout.photo.show !== false) {
+    const px = parseInt(layout.photo.x) || 200, py = parseInt(layout.photo.y) || 190;
+    const pw = parseInt(layout.photo.w) || 238, ph = parseInt(layout.photo.h) || 300;
+    const shape = layout.photo.shape || 'rect';
+    const radius = parseInt(layout.photo.radius) || 0;
+    const border = 4;
+
+    ctx.save();
+    ctx.fillStyle = layout.photo.borderColor || '#000000';
+    ctx.beginPath();
+    if (shape === 'circle') ctx.arc(px + pw/2, py + ph/2, Math.min(pw, ph)/2 + border, 0, Math.PI*2);
+    else if (ctx.roundRect) ctx.roundRect(px - border, py - border, pw + border*2, ph + border*2, radius);
+    else ctx.rect(px - border, py - border, pw + border*2, ph + border*2);
+    ctx.fill();
+
+    ctx.beginPath();
+    if (shape === 'circle') ctx.arc(px + pw/2, py + ph/2, Math.min(pw, ph)/2, 0, Math.PI*2);
+    else if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, radius);
+    else ctx.rect(px, py, pw, ph);
+    ctx.clip();
+
+    if (s.photoBase64) {
+      const photo = await loadCachedImage(s.photoBase64);
+      if (photo && photo.width > 0) ctx.drawImage(photo, 0, 0, photo.width, photo.height, px, py, pw, ph);
+      else { ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px, py, pw, ph); }
+    } else { ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px, py, pw, ph); }
+    ctx.restore();
+  }
+
+  for (const field of fields) {
+    const l = layout[field];
+    if (!l || l.show === false) continue;
+
+    ctx.fillStyle = l.color || '#1e293b';
+    ctx.font = `bold ${l.size || 26}px ${fontFamily}`;
+    ctx.textAlign = l.align || 'left';
+
+    let val = s[field] || (field === 'phone' ? s.mobile : (field === 'blood' ? s.bloodGroup : '')) || '';
+    if (field === 'class') val = toOdiaClass(val, langMode);
+    else if (['roll', 'phone', 'dob'].includes(field)) val = toOdiaDigits(val, langMode);
+
+    if (l.showLabel) {
+      const lbl = FIELD_LABELS[field] || field.toUpperCase();
+      val = `${lbl}: ${val}`;
+    }
+    ctx.fillText(val, parseInt(l.x) || 0, parseInt(l.y) || 0);
+  }
+
+  if ((!layout.sign || layout.sign.show !== false) && sm?.hmSignature) {
+    const signImg = await loadCachedImage(sm.hmSignature);
+    if (signImg && signImg.width > 0) {
+      const sx = parseInt(layout.sign?.x) || 430, sy = parseInt(layout.sign?.y) || 850;
+      const ratio = Math.min(170 / signImg.width, 75 / signImg.height);
+      ctx.drawImage(signImg, sx, sy, signImg.width * ratio, signImg.height * ratio);
+    }
+  }
+
+  return await new Promise(r => canvas.toBlob(r, 'image/png'));
+}
+
+function openLayoutEditor() {
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  window.currentLayoutSettings = s.layoutSettings ? JSON.parse(JSON.stringify(s.layoutSettings)) : getDefaultLayout(fields);
+  window.currentPrivateTemplateUrl = s.privateTemplateUrl || null;
+
+  document.getElementById('le_lang_mode').value = window.currentLayoutSettings.langMode || 'english';
+  document.getElementById('le_header_show').checked = window.currentLayoutSettings.header?.show !== false;
+  document.getElementById('le_header_y').value = window.currentLayoutSettings.header?.y || 55;
+  document.getElementById('le_header_color').value = window.currentLayoutSettings.header?.color || '#ffffff';
+
+  document.getElementById('le_sign_show').checked = window.currentLayoutSettings.sign?.show !== false;
+  document.getElementById('le_sign_x').value = window.currentLayoutSettings.sign?.x || 430;
+  document.getElementById('le_sign_y').value = window.currentLayoutSettings.sign?.y || 850;
+
+  const p = window.currentLayoutSettings.photo || { x: 200, y: 190, w: 238, h: 300, shape: 'rect', radius: 10, borderColor: '#000000', show: true };
+  document.getElementById('le_photo_x').value = p.x;
+  document.getElementById('le_photo_y').value = p.y;
+  document.getElementById('le_photo_w').value = p.w;
+  document.getElementById('le_photo_h').value = p.h;
+  document.getElementById('le_photo_shape').value = p.shape || 'rect';
+  document.getElementById('le_photo_r').value = p.radius || 0;
+  document.getElementById('le_photo_border_color').value = p.borderColor || '#000000';
+  document.getElementById('le_photo_show').checked = p.show !== false;
+
+  document.getElementById('le_current_bg_info').innerHTML = window.currentPrivateTemplateUrl
+    ? `✅ Custom Background Active`
+    : `⚠️ Using default header. Upload your 638x1012px PNG/JPG template below.`;
+
+  const container = document.getElementById('layoutFieldsContainer');
+  container.innerHTML = '';
+  let defaultY = 550;
+  fields.forEach(f => {
+    const l = window.currentLayoutSettings[f] || { x: 60, y: defaultY, size: 26, color: '#1e293b', align: 'left', showLabel: f !== 'name', show: true };
+    container.innerHTML += `
+      <div class="le-field-box">
+        <strong>Field: ${f.toUpperCase()}</strong>
+        <div class="le-inputs">
+          <label>X: <input type="number" id="le_${f}_x" value="${l.x}" oninput="debouncedUpdateLivePreview()"></label>
+          <label>Y: <input type="number" id="le_${f}_y" value="${l.y}" oninput="debouncedUpdateLivePreview()"></label>
+          <label>Size: <input type="number" id="le_${f}_size" value="${l.size}" oninput="debouncedUpdateLivePreview()"></label>
+          <input type="color" id="le_${f}_color" value="${l.color || '#1e293b'}" onchange="debouncedUpdateLivePreview()">
+          <select id="le_${f}_align" onchange="debouncedUpdateLivePreview()" style="padding:4px; font-size:12px;">
+            <option value="left" ${l.align==='left'?'selected':''}>Left</option>
+            <option value="center" ${l.align==='center'?'selected':''}>Center</option>
+            <option value="right" ${l.align==='right'?'selected':''}>Right</option>
+          </select>
+          <label><input type="checkbox" id="le_${f}_label" ${l.showLabel?'checked':''} onchange="debouncedUpdateLivePreview()"> Label</label>
+          <label><input type="checkbox" id="le_${f}_show" ${l.show!==false?'checked':''} onchange="debouncedUpdateLivePreview()"> Show</label>
+        </div>
+      </div>
+    `;
+    defaultY += 46;
+  });
+
+  document.getElementById('layoutEditorModal').style.display = 'flex';
+  updateLivePreview();
+}
+
+document.getElementById('plBgInput').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const btn = document.getElementById('saveLayoutBtn');
+  btn.disabled = true; btn.textContent = "Uploading BG to Cloud...";
+  try {
+    window.currentPrivateTemplateUrl = await uploadImageToCloud(f, `templates/${activeUdise}`, 638, 1012, 'image/png');
+    document.getElementById('le_current_bg_info').innerHTML = `✅ New Background Uploaded!`;
+    updateLivePreview();
+  } catch (err) { alert("BG Upload error: " + err.message); }
+  finally { btn.disabled = false; btn.innerHTML = "<i class='fas fa-save'></i> Save Card Coordinates"; }
+};
+
+let previewTimer = null;
+function debouncedUpdateLivePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(updateLivePreview, 80);
+}
+
+async function updateLivePreview() {
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const layout = {
+    langMode: document.getElementById('le_lang_mode').value,
+    header: {
+      show: document.getElementById('le_header_show').checked,
+      y: document.getElementById('le_header_y').value,
+      color: document.getElementById('le_header_color').value
+    },
+    sign: {
+      show: document.getElementById('le_sign_show').checked,
+      x: document.getElementById('le_sign_x').value,
+      y: document.getElementById('le_sign_y').value
+    },
+    photo: {
+      x: document.getElementById('le_photo_x').value,
+      y: document.getElementById('le_photo_y').value,
+      w: document.getElementById('le_photo_w').value,
+      h: document.getElementById('le_photo_h').value,
+      shape: document.getElementById('le_photo_shape').value,
+      radius: document.getElementById('le_photo_r').value,
+      borderColor: document.getElementById('le_photo_border_color').value,
+      show: document.getElementById('le_photo_show').checked
+    }
+  };
+  fields.forEach(f => {
+    if (!document.getElementById(`le_${f}_x`)) return;
+    layout[f] = {
+      x: document.getElementById(`le_${f}_x`).value,
+      y: document.getElementById(`le_${f}_y`).value,
+      size: document.getElementById(`le_${f}_size`).value,
+      color: document.getElementById(`le_${f}_color`).value,
+      align: document.getElementById(`le_${f}_align`).value,
+      showLabel: document.getElementById(`le_${f}_label`).checked,
+      show: document.getElementById(`le_${f}_show`).checked
+    };
+  });
+  window.currentLayoutSettings = layout;
+
+  const dummyAvatar = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23cbd5e1"/><circle cx="100" cy="75" r="38" fill="%2364748b"/><path d="M40 185c0-42 30-72 60-72s60 30 60 72v15H40v-15z" fill="%2364748b"/></svg>`;
+  const sampleStudent = currentSchoolStudents[0] || {
+    name: "Abinash Mahapatra", class: "10", roll: "01", dob: "2012-05-19", bloodGroup: "O+", mobile: "9876543210", father: "Ramesh Mahapatra", mother: "Sita Devi", address: "Koraput, Odisha", photoBase64: dummyAvatar
+  };
+
+  const blob = await drawUnifiedCard({ ...sampleStudent, photoBase64: sampleStudent.photoBase64 || dummyAvatar }, { ...s, layoutSettings: layout, privateTemplateUrl: window.currentPrivateTemplateUrl });
+  const plCanvas = document.getElementById('plCanvas');
+  plCanvas.width = CARD_W; plCanvas.height = CARD_H;
+  const img = new Image();
+  const url = URL.createObjectURL(blob);
+  img.src = url;
+  await new Promise(r => img.onload = r);
+  plCanvas.getContext('2d').drawImage(img, 0, 0);
+  URL.revokeObjectURL(url);
+}
+
+async function saveLayoutSettings() {
+  const btn = document.getElementById('saveLayoutBtn');
+  btn.disabled = true; btn.textContent = "Saving...";
+  try {
+    await db.collection('schools').doc(activeUdise).update({
+      layoutSettings: window.currentLayoutSettings,
+      privateTemplateUrl: window.currentPrivateTemplateUrl,
+      lastModified: Date.now()
+    });
+    clientSchoolsMap[activeUdise].layoutSettings = window.currentLayoutSettings;
+    clientSchoolsMap[activeUdise].privateTemplateUrl = window.currentPrivateTemplateUrl;
+    document.getElementById('layoutEditorModal').style.display = 'none';
+    alert("Card layout coordinates saved!");
+  } catch (e) { alert("Error saving layout: " + e.message); }
+  finally { btn.disabled = false; btn.innerHTML = "<i class='fas fa-save'></i> Save Card Coordinates"; }
+}
+
+const plCanvas = document.getElementById('plCanvas');
+let dragTarget = null, dragOffX = 0, dragOffY = 0;
+
+function getPointerCoords(e) {
+  const r = plCanvas.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (cx - r.left) * (plCanvas.width / r.width), y: (cy - r.top) * (plCanvas.height / r.height) };
+}
+
+plCanvas.addEventListener('mousedown', startCanvasDrag);
+plCanvas.addEventListener('touchstart', startCanvasDrag, { passive: false });
+window.addEventListener('mousemove', moveCanvasDrag);
+window.addEventListener('touchmove', moveCanvasDrag, { passive: false });
+window.addEventListener('mouseup', () => dragTarget = null);
+window.addEventListener('touchend', () => dragTarget = null);
+
+function startCanvasDrag(e) {
+  const pos = getPointerCoords(e);
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+
+  for (let i = fields.length - 1; i >= 0; i--) {
+    const f = fields[i];
+    const xEl = document.getElementById(`le_${f}_x`); if (!xEl) continue;
+    const x = parseInt(xEl.value) || 0, y = parseInt(document.getElementById(`le_${f}_y`).value) || 0;
+    const size = parseInt(document.getElementById(`le_${f}_size`).value) || 26;
+    const align = document.getElementById(`le_${f}_align`).value;
+    let bx = x, bw = size * 9, bh = size * 1.4, by = y - size;
+    if (align === 'center') bx = x - bw/2;
+    if (align === 'right') bx = x - bw;
+    if (pos.x >= bx && pos.x <= bx + bw && pos.y >= by && pos.y <= by + bh) {
+      dragTarget = f; dragOffX = pos.x - x; dragOffY = pos.y - y;
+      e.preventDefault(); return;
+    }
+  }
+
+  const px = parseInt(document.getElementById('le_photo_x').value) || 0;
+  const py = parseInt(document.getElementById('le_photo_y').value) || 0;
+  const pw = parseInt(document.getElementById('le_photo_w').value) || 238;
+  const ph = parseInt(document.getElementById('le_photo_h').value) || 300;
+  if (pos.x >= px && pos.x <= px + pw && pos.y >= py && pos.y <= py + ph) {
+    dragTarget = 'photo'; dragOffX = pos.x - px; dragOffY = pos.y - py;
+    e.preventDefault();
+  }
+}
+
+function moveCanvasDrag(e) {
+  if (!dragTarget) return;
+  const pos = getPointerCoords(e);
+  if (dragTarget === 'photo') {
+    document.getElementById('le_photo_x').value = Math.round(pos.x - dragOffX);
+    document.getElementById('le_photo_y').value = Math.round(pos.y - dragOffY);
+  } else {
+    document.getElementById(`le_${dragTarget}_x`).value = Math.round(pos.x - dragOffX);
+    document.getElementById(`le_${dragTarget}_y`).value = Math.round(pos.y - dragOffY);
+  }
+  debouncedUpdateLivePreview();
+  e.preventDefault();
+}
+
+async function previewStudentCardFromModal() {
+  const s = clientSchoolsMap[activeUdise]; if (!s) return;
+  const temp = {
+    name: document.getElementById('stName').value,
+    class: document.getElementById('stClass').value,
+    roll: document.getElementById('stRoll').value,
+    dob: document.getElementById('stDob').value,
+    bloodGroup: document.getElementById('stBlood').value,
+    mobile: document.getElementById('stPhone').value,
+    father: document.getElementById('stFather').value,
+    mother: document.getElementById('stMother').value,
+    address: document.getElementById('stAddress').value,
+    photoBase64: document.getElementById('stPhotoPreview').src || ''
+  };
+  const blob = await drawUnifiedCard(temp, s);
+  document.getElementById('clientPreviewImg').src = URL.createObjectURL(blob);
+  document.getElementById('clientPreviewModal').style.display = 'flex';
+}
+</script>
+</body>
+</html>
