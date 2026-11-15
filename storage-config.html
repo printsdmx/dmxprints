@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Storage Config Manager</title>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 460px; box-shadow: 0 25px 60px rgba(0,0,0,0.5); }
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo i { font-size: 38px; color: #38bdf8; }
+    .logo h2 { color: #f1f5f9; font-size: 1.3rem; font-weight: 800; margin-top: 10px; }
+    .logo p { color: #64748b; font-size: 12.5px; margin-top: 4px; }
+
+    label { display: block; font-size: 11.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; margin-top: 16px; }
+    input, select { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #f1f5f9; font-size: 14px; font-family: monospace; outline: none; transition: border-color 0.2s; }
+    input:focus, select:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56,189,248,0.12); }
+    select option { background: #1e293b; }
+
+    .btn { width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 15px; margin-top: 22px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+    .btn-save { background: #0ea5e9; color: white; }
+    .btn-save:hover { background: #0284c7; transform: translateY(-1px); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .status-box { margin-top: 16px; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; display: none; align-items: center; gap: 10px; }
+    .status-success { background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+    .status-error { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+
+    .divider { border: none; border-top: 1px solid #334155; margin: 24px 0 8px 0; }
+
+    .current-badge { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; margin-top: 8px; font-size: 12px; color: #94a3b8; font-family: monospace; }
+    .current-badge span { color: #38bdf8; font-weight: 700; }
+
+    /* Lock Screen */
+    #lockScreen { position: fixed; inset: 0; background: #0f172a; z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    #lockCard { background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 360px; text-align: center; }
+    #lockCard i { font-size: 40px; color: #f59e0b; }
+    #lockCard h2 { color: #f1f5f9; margin: 12px 0 6px; font-size: 1.2rem; }
+    #lockCard p { color: #64748b; font-size: 12.5px; margin-bottom: 20px; }
+    #lockCard input { text-align: center; letter-spacing: 2px; }
+    #lockErr { color: #f87171; font-size: 12px; margin-top: 10px; font-weight: 600; display: none; }
+  </style>
+</head>
+<body>
+
+<!-- Lock Screen -->
+<div id="lockScreen">
+  <div id="lockCard">
+    <i class="fas fa-lock"></i>
+    <h2>Storage Config</h2>
+    <p>Enter the access password to manage cloud storage settings</p>
+    <label for="lockInput">Password</label>
+    <input type="password" id="lockInput" placeholder="Enter password" onkeydown="if(event.key==='Enter') unlock()">
+    <button class="btn btn-save" onclick="unlock()" style="margin-top:16px;">
+      <i class="fas fa-unlock-alt"></i> Unlock
+    </button>
+    <div id="lockErr">Incorrect password!</div>
+  </div>
+</div>
+
+<!-- Main Panel -->
+<div class="card" id="mainPanel" style="display:none;">
+  <div class="logo">
+    <i class="fas fa-cloud-upload-alt"></i>
+    <h2>Cloud Storage Manager</h2>
+    <p>Manage Cloudinary / ImgBB configuration for all portals</p>
+  </div>
+
+  <label>Storage Provider</label>
+  <select id="stProvider" onchange="toggleProviderFields()">
+    <option value="cloudinary">Cloudinary (Recommended)</option>
+    <option value="imgbb">ImgBB</option>
+    <option value="base64">Firestore Base64 Fallback</option>
+  </select>
+
+  <div id="cloudinaryFields">
+    <label>Cloudinary Cloud Name</label>
+    <input type="text" id="stCloudName" placeholder="e.g. borxawcr">
+
+    <label>Cloudinary Upload Preset (Unsigned)</label>
+    <input type="text" id="stUploadPreset" placeholder="e.g. idcards_unsigned">
+  </div>
+
+  <div id="imgbbFields" style="display:none;">
+    <label>ImgBB API Key</label>
+    <input type="text" id="stImgbbKey" placeholder="Your ImgBB API key">
+  </div>
+
+  <hr class="divider">
+
+  <div style="font-size:11.5px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px;">Current Saved Config</div>
+  <div class="current-badge" id="currentConfigDisplay">Loading...</div>
+
+  <button class="btn btn-save" id="saveBtn" onclick="saveConfig()">
+    <i class="fas fa-save"></i> Save & Sync to All Portals
+  </button>
+
+  <div class="status-box status-success" id="successBox">
+    <i class="fas fa-check-circle"></i> <span>Config saved and synced to all portals!</span>
+  </div>
+  <div class="status-box status-error" id="errorBox">
+    <i class="fas fa-exclamation-circle"></i> <span id="errorMsg">Something went wrong.</span>
+  </div>
+</div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────
+  const ACCESS_PASSWORD = "Anwesh@1998"; // change this to whatever you want
+  // ────────────────────────────────────────────────────
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA91DzdFor6pil6YPiY8bdAbsQICPwbdCw",
+    authDomain: "id-cards-e66e3.firebaseapp.com",
+    projectId: "id-cards-e66e3",
+    storageBucket: "id-cards-e66e3.firebasestorage.app",
+    messagingSenderId: "500450999702",
+    appId: "1:500450999702:web:27f0b1ef61653f2c3ab1b7"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  /* ── LOCK SCREEN ── */
+  function unlock() {
+    const val = document.getElementById('lockInput').value;
+    if (val === ACCESS_PASSWORD) {
+      document.getElementById('lockScreen').style.display = 'none';
+      document.getElementById('mainPanel').style.display = 'block';
+      loadCurrentConfig();
+    } else {
+      document.getElementById('lockErr').style.display = 'block';
+      document.getElementById('lockInput').value = '';
+      document.getElementById('lockInput').focus();
+    }
+  }
+
+  /* ── LOAD CURRENT CONFIG ── */
+  async function loadCurrentConfig() {
+    try {
+      const doc = await db.collection('settings').doc('storageConfig').get();
+      if (doc.exists) {
+        const d = doc.data();
+        document.getElementById('stProvider').value = d.provider || 'cloudinary';
+        document.getElementById('stCloudName').value = d.cloudName || '';
+        document.getElementById('stUploadPreset').value = d.uploadPreset || '';
+        document.getElementById('stImgbbKey').value = d.imgbbKey || '';
+        toggleProviderFields();
+        showCurrentConfig(d);
+      } else {
+        document.getElementById('currentConfigDisplay').innerHTML = '<span>No config saved yet.</span>';
+      }
+    } catch(e) {
+      document.getElementById('currentConfigDisplay').innerHTML = `<span style="color:#f87171;">Error loading: ${e.message}</span>`;
+    }
+  }
+
+  function showCurrentConfig(d) {
+    const provider = d.provider || 'cloudinary';
+    let html = `Provider: <span>${provider}</span>`;
+    if (provider === 'cloudinary') {
+      html += ` &nbsp;|&nbsp; Cloud: <span>${d.cloudName || '—'}</span>`;
+      html += ` &nbsp;|&nbsp; Preset: <span>${d.uploadPreset ? '••••••' : '—'}</span>`;
+    } else if (provider === 'imgbb') {
+      html += ` &nbsp;|&nbsp; Key: <span>${d.imgbbKey ? '••••••' : '—'}</span>`;
+    }
+    if (d.updatedAt) {
+      html += `<br><span style="color:#475569;">Last updated: ${new Date(d.updatedAt).toLocaleString()}</span>`;
+    }
+    document.getElementById('currentConfigDisplay').innerHTML = html;
+  }
+
+  /* ── TOGGLE FIELDS BY PROVIDER ── */
+  function toggleProviderFields() {
+    const p = document.getElementById('stProvider').value;
+    document.getElementById('cloudinaryFields').style.display = p === 'cloudinary' ? 'block' : 'none';
+    document.getElementById('imgbbFields').style.display = p === 'imgbb' ? 'block' : 'none';
+  }
+
+  /* ── SAVE CONFIG ── */
+  async function saveConfig() {
+    const btn = document.getElementById('saveBtn');
+    const successBox = document.getElementById('successBox');
+    const errorBox = document.getElementById('errorBox');
+    successBox.style.display = 'none';
+    errorBox.style.display = 'none';
+
+    const provider = document.getElementById('stProvider').value;
+    const cloudName = document.getElementById('stCloudName').value.trim();
+    const uploadPreset = document.getElementById('stUploadPreset').value.trim();
+    const imgbbKey = document.getElementById('stImgbbKey').value.trim();
+
+    if (provider === 'cloudinary' && (!cloudName || !uploadPreset)) {
+      document.getElementById('errorMsg').textContent = 'Please fill in both Cloud Name and Upload Preset.';
+      errorBox.style.display = 'flex';
+      return;
+    }
+    if (provider === 'imgbb' && !imgbbKey) {
+      document.getElementById('errorMsg').textContent = 'Please enter the ImgBB API key.';
+      errorBox.style.display = 'flex';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    try {
+      const config = { provider, cloudName, uploadPreset, imgbbKey, updatedAt: Date.now() };
+      await db.collection('settings').doc('storageConfig').set(config, { merge: true });
+      localStorage.setItem('cloudStorageConfig', JSON.stringify(config));
+      showCurrentConfig(config);
+      successBox.style.display = 'flex';
+      setTimeout(() => successBox.style.display = 'none', 4000);
+    } catch(e) {
+      document.getElementById('errorMsg').textContent = e.message;
+      errorBox.style.display = 'flex';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save"></i> Save & Sync to All Portals';
+    }
+  }
+</script>
+</body>
+</html>
