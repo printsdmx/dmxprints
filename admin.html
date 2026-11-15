@@ -1,0 +1,2585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Master Admin Portal - ID Cards Pro</title>
+
+  <!-- Libraries: SheetJS, JSZip, Firebase (App + Firestore Only), FontAwesome -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root { --primary: #0b53a0; --accent: #6b21a8; --bg: #f4f7f6; }
+    body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: var(--bg); color: #222; margin: 0; }
+    .container { max-width: 1280px; margin: 0 auto; }
+    .hidden { display: none !important; }
+    
+    .btn { padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: white; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+    .btn:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary { background: #007bff; }
+    .btn-success { background: #28a745; }
+    .btn-danger { background: #dc3545; }
+    .btn-warning { background: #ffc107; color: #222; }
+    .btn-purple { background: #6b21a8; }
+    .btn-secondary { background: #6c757d; }
+    .btn-outline { background: white; border: 1px solid #d0d7de; color: #333; }
+    .btn-outline:hover { background: #f8f9fa; }
+
+    input, select { padding: 10px 12px; border-radius: 8px; border: 1px solid #d0d7de; background: #fff; font-size: 14px; box-sizing: border-box; }
+    input:focus, select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.12); }
+
+    .dashboard-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn { padding: 12px 22px; border-radius: 10px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; transition: 0.2s; background: #e2e8f0; color: #475569; display: flex; align-items: center; gap: 8px; }
+    .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(11,83,160,0.25); }
+
+    .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+    .card { background: white; padding: 22px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); border: 1px solid #eaeaea; position: relative; transition: all 0.25s ease; display: flex; flex-direction: column; justify-content: space-between; }
+    .card:hover { transform: translateY(-3px); border-color: #b3d4ff; box-shadow: 0 10px 24px rgba(0,123,255,0.08); }
+    
+    .badge { padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+    .badge-autoload { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+@keyframes pulse-badge { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+.autoload-pulse { animation: pulse-badge 1.5s ease-in-out infinite; background: #dc3545; color: #fff; border-radius: 50%; min-width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-left: 4px; }
+    .badge-printed { background: #d4edda; color: #155724; }
+    .badge-ready { background: #cce5ff; color: #004085; }
+    .badge-pending { background: #ffeeba; color: #856404; }
+
+    .filter-bar { background: #fff; padding: 16px 20px; border-radius: 14px; margin-bottom: 20px; border: 1px solid #eaeaea; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+    .detail-header { background: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; border: 1px solid #eaeaea; }
+    .config-panel { background: #f8fbff; padding: 18px 22px; border-radius: 14px; margin-bottom: 20px; border: 1px solid #cce5ff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    
+    .table-container { background: white; padding: 16px; border-radius: 16px; overflow-x: auto; border: 1px solid #eaeaea; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { padding: 11px 10px; border-bottom: 1px solid #f0f0f0; text-align: left; vertical-align: middle; }
+    th { background: #f8fafc; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 11.5px; }
+    tr:hover td { background: #f8fafc; }
+    img.thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; border: 1px solid #e2e8f0; background: #f1f5f9; }
+
+    .action-bar { margin-top: 20px; padding: 16px 24px; background: white; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; bottom: 15px; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 100; flex-wrap: wrap; gap: 12px; border: 1px solid #eaeaea; }
+
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(3px); padding: 15px; }
+    .modal-content { background: white; padding: 26px; border-radius: 16px; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.25); }
+    .layout-editor-modal .modal-content { max-width: 1100px; padding: 22px; }
+    .le-grid { display: flex; gap: 20px; height: 74vh; }
+    .le-controls { flex: 1.1; overflow-y: auto; padding-right: 12px; border-right: 1px solid #eee; }
+    .le-preview { flex: 0.9; display: flex; justify-content: center; align-items: center; background: #e2e8f0; border-radius: 12px; overflow: hidden; position: relative; }
+    .le-field-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px; margin-bottom: 10px; }
+    .le-field-box strong { display: block; font-size: 12px; color: #475569; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .le-inputs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; }
+    .le-inputs input[type="number"] { width: 62px; padding: 5px; }
+    .le-inputs input[type="color"] { width: 32px; height: 32px; padding: 0; border: none; cursor: pointer; }
+  </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Oriya:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen" style="position:fixed; inset:0; background: linear-gradient(135deg, #0b53a0 0%, #002b5e 100%); z-index:5000; display:flex; align-items:center; justify-content:center;">
+  <div style="background:white; padding:38px 32px; border-radius:20px; width:90%; max-width:350px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.4);">
+    <div style="font-size:44px; margin-bottom:10px;">🛡️</div>
+    <h2 style="margin:0 0 6px 0; color:#0b53a0; font-weight:800;">Master Admin</h2>
+    <p style="font-size:13px; color:#666; margin-bottom:22px;">Enter master password to unlock portal</p>
+    <input type="password" id="adminPasswordInput" placeholder="Password" style="width:100%; padding:13px; margin-bottom:14px; text-align:center; font-size:16px;">
+    <button id="adminPasswordBtn" class="btn btn-primary" style="width:100%; justify-content:center; padding:13px; font-size:15px;">Unlock Portal</button>
+    <div id="adminPasswordError" style="color:#dc3545; font-size:12.5px; margin-top:10px; font-weight:600; display:none;">Incorrect password!</div>
+  </div>
+</div>
+
+<div class="container" id="mainContainer" style="display:none;">
+  
+  <!-- ================= DASHBOARD VIEW ================= -->
+  <div id="dashboardView">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h1 style="margin:0; color:#0b53a0; font-weight:800;">Master Admin Control Center</h1>
+        <p style="margin:4px 0 0 0; font-size:13px; color:#64748b;">Manage Clients, Schools, UDISE Auto-Loads & Final Print ZIPs</p>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-purple" onclick="openClientModal()"><i class="fas fa-user-plus"></i> + New Client</button>
+        <button class="btn btn-success" id="quickSyncBtn" onclick="quickSync()"><i class="fas fa-bolt"></i> Quick Sync</button>
+        <button class="btn btn-outline" id="fullSyncBtn" onclick="rebuildSchoolsMap()"><i class="fas fa-sync"></i> Rebuild Counters</button>
+        <button class="btn btn-warning" onclick="exportBackup()"><i class="fas fa-download"></i> Backup</button>
+      </div>
+    </div>
+
+    <!-- Main Navigation Tabs (Manage Clients is 1st & Default) -->
+    <div class="dashboard-tabs">
+      <button id="tabClients" class="tab-btn active" onclick="switchMainTab('clients')"><i class="fas fa-users-cog"></i> Manage Clients (<span id="countClients">0</span>)</button>
+      <button id="tabSchools" class="tab-btn" onclick="switchMainTab('schools')"><i class="fas fa-school"></i> All Schools (<span id="countSchools">0</span>)</button>
+      <button id="tabSubmittedPrint" class="tab-btn" onclick="switchMainTab('submitted')"><i class="fas fa-print"></i> Submitted for Printing (<span id="countSubmittedPrint">0</span>)</button>
+      <button id="tabAutoLoad" class="tab-btn" onclick="switchMainTab('autoload')"><i class="fas fa-magic"></i> UDISE Auto-Load Requests (<span id="countAutoLoad">0</span>)</button>
+    </div>
+
+    <!-- School Filters (Hidden when on Manage Clients tab) -->
+    <div class="filter-bar hidden" id="schoolFiltersBar">
+      <div style="flex:1; min-width:220px;">
+        <label style="font-size:11.5px; font-weight:700; color:#555; display:block; margin-bottom:4px;">Search School / UDISE</label>
+        <input type="text" id="dashSearch" placeholder="Search UDISE, School Name, or District..." oninput="renderDashboard()" style="width:100%;">
+      </div>
+      <div>
+        <label style="font-size:11.5px; font-weight:700; color:#555; display:block; margin-bottom:4px;">Filter by Client</label>
+        <select id="dashClientFilter" onchange="renderDashboard()" style="min-width:170px;">
+          <option value="all">All Clients (Direct + Partners)</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11.5px; font-weight:700; color:#555; display:block; margin-bottom:4px;">Sort By</label>
+        <select id="dashSort" onchange="renderDashboard()">
+          <option value="recent">Recently Active</option>
+          <option value="regNew">Newest Registered</option>
+          <option value="studentsHigh">Most Students</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Grids (Client Grid shown first by default) -->
+    <div id="clientGrid" class="grid-cards"></div>
+    <div id="schoolGrid" class="grid-cards hidden"></div>
+  </div>
+
+  <!-- ================= SCHOOL DETAIL VIEW ================= -->
+  <div id="detailView" class="hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+      <button class="btn btn-outline" onclick="showDashboard()"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="copySchoolMagicLink()"><i class="fas fa-link"></i> Copy School Magic Link</button>
+        <button class="btn btn-primary" onclick="openSchoolExcelModal()"><i class="fas fa-file-excel"></i> Upload Excel to this School</button>
+        <button class="btn btn-outline" id="verifyPdfBtn" onclick="generateSchoolVerificationPdf()"><i class="fas fa-file-pdf" style="color:#dc2626;"></i> Verification PDF</button>
+        <button class="btn btn-outline" onclick="openSchoolEdit(activeUdise)"><i class="fas fa-cog"></i> School Settings</button>
+      </div>
+    </div>
+
+    <div class="detail-header">
+      <div style="flex:1; min-width:280px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span id="viewUdiseHead" style="color:#0b53a0; font-size:1.6rem; font-family:monospace; font-weight:800;">UDISE: 000000</span>
+          <span id="viewClientBadge" class="badge badge-ready">Client: Direct</span>
+        </div>
+        <div id="viewSchoolNameMaster" style="color:#E85C0D; font-size:19px; font-weight:800; margin-top:6px;"></div>
+        <div id="viewAddress" style="color:#555; font-size:14px; margin-top:6px;"></div>
+        <div id="viewContact" style="color:#0277bd; font-weight:700; font-size:14px; margin-top:4px;"></div>
+        <div id="viewActiveFields" style="margin-top:10px; font-size:12px; color:#475569;"></div>
+        <div id="viewCredentials" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;"></div>
+      </div>
+
+      <div style="text-align:right; background:#f8fafc; padding:12px 16px; border-radius:12px; border:1px solid #e2e8f0;">
+        <small style="font-weight:700; color:#64748b; display:block;">HM Signature</small>
+        <img id="viewHmSign" style="height:55px; margin-top:6px; object-fit:contain; border:1px dashed #cbd5e1; background:#fff; padding:4px; border-radius:6px;" src="" alt="No Sign" crossorigin="anonymous">
+      </div>
+    </div>
+
+    <!-- Unified Card Designer & Font Panel -->
+    <div class="config-panel">
+      <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+        <div>
+          <label style="font-size:11.5px; font-weight:700; color:#0b53a0;">Odia Font (.ttf) Optional</label><br>
+          <input id="fontInput" type="file" accept=".ttf,.otf" style="padding:5px; font-size:12px;">
+          <span id="fontStatus" class="badge badge-pending">Default System/Odia</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span id="aiStatus" class="badge badge-ready"><i class="fas fa-robot"></i> Face AI Loading...</span>
+          <span id="cloudStatusBadge" class="badge badge-ready"><i class="fas fa-cloud"></i> Checking Storage...</span>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-purple" style="padding:12px 20px; font-size:14.5px;" onclick="openLayoutEditor()"><i class="fas fa-paint-roller"></i> Open Drag & Drop Card Designer</button>
+      </div>
+    </div>
+
+    <!-- Student Table Filter Bar -->
+    <div class="filter-bar">
+      <input type="text" id="studentSearchInput" placeholder="Search student name or roll..." oninput="resetAndRenderTable()" style="flex:1; min-width:180px;">
+      
+      <select id="sourceFilterSelect" onchange="resetAndRenderTable()">
+        <option value="all">All Sources</option>
+        <option value="excel">Excel Auto-Load</option>
+        <option value="manual">School Manual</option>
+      </select>
+
+      <select id="classFilterSelect" onchange="resetAndRenderTable()">
+        <option value="all">All Classes</option>
+      </select>
+
+      <select id="printFilterSelect" onchange="resetAndRenderTable()">
+        <option value="all">All Print Status</option>
+        <option value="unprinted">Not Printed</option>
+        <option value="printed">Printed</option>
+      </select>
+
+      <select id="reviewFilterSelect" onchange="resetAndRenderTable()">
+        <option value="all">All Review Status</option>
+        <option value="reviewed">Reviewed (Ready)</option>
+        <option value="not_reviewed">Pending Review</option>
+      </select>
+
+      <select id="studentSortSelect" onchange="resetAndRenderTable()">
+        <option value="rollAsc">Roll No (Asc)</option>
+        <option value="nameAsc">Name (A-Z)</option>
+        <option value="newToOld">Newest Added</option>
+      </select>
+    </div>
+
+    <!-- Fast Paginated Student Table -->
+    <div class="table-container">
+      <table id="studentTable">
+        <thead>
+          <tr>
+            <th style="width:36px; text-align:center;"><input type="checkbox" id="selectAll" style="transform:scale(1.2);"></th>
+            <th style="width:40px;">#</th>
+            <th style="width:55px;">Photo</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Roll</th>
+            <th>DOB</th>
+            <th>Blood</th>
+            <th>Mobile</th>
+            <th>Father / Address</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th style="text-align:right;">Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="loadMoreContainer" style="text-align:center; padding:14px; display:none;">
+        <button class="btn btn-outline" onclick="loadMoreTableRows()">Load More Students (<span id="shownCountTxt"></span>)</button>
+      </div>
+    </div>
+
+    <!-- Sticky Bottom Action Bar -->
+    <div class="action-bar">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span id="selectionCount" class="badge badge-ready" style="font-size:14px; padding:8px 14px;">0 selected</span>
+        <button class="btn btn-outline" onclick="selectAllFilteredStudents()">Select All Filtered (<span id="totalFilteredCount">0</span>)</button>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="bulkDeleteBtn" class="btn btn-danger" onclick="bulkDeleteSelected()" disabled><i class="fas fa-trash"></i> Delete</button>
+        <button id="markPrintedBtn" class="btn btn-outline" onclick="markSelectedPrinted(true)" disabled>✔ Mark Printed</button>
+        <button id="markUnprintedBtn" class="btn btn-outline" onclick="markSelectedPrinted(false)" disabled>✖ Unmark</button>
+        <button id="generateBtn" class="btn btn-success" style="font-size:14.5px; padding:11px 22px;" disabled><i class="fas fa-file-archive"></i> Download Final ZIP (PNGs + Photos + Excel)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<canvas id="cardCanvas" style="display:none;"></canvas>
+
+<!-- ================= SCHOOL-SPECIFIC EXCEL UPLOAD MODAL (WITH REQUIRED COLUMNS GUIDE) ================= -->
+<div id="schoolExcelModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-top:0; color:#0b53a0;"><i class="fas fa-file-excel"></i> Upload Excel to School</h3>
+    <div id="sxSchoolInfo" style="font-size:13.5px; font-weight:700; color:#ea580c; margin-bottom:12px;"></div>
+
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:14px; border-radius:12px; margin-bottom:16px;">
+      <div style="font-size:12.5px; font-weight:800; color:#166534; margin-bottom:8px;">
+        <i class="fas fa-list-check"></i> Required Excel Column Headers for This School:
+      </div>
+      <p style="font-size:12px; color:#15803d; margin:0 0 10px 0;">
+        The Client configured the following fields for this school. Make sure your Excel sheet's first row uses these column headers:
+      </p>
+      <div id="sxRequiredColumnsBadges" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+      <button type="button" class="btn btn-outline" style="width:100%; justify-content:center; border-color:#86efac; color:#166534; font-size:12.5px; padding:8px;" onclick="downloadSampleSchoolExcel()">
+        <i class="fas fa-download"></i> Download Matching Sample Excel Template (.xlsx)
+      </button>
+    </div>
+
+    <div style="margin-bottom:18px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:6px;">Select Completed Excel File (.xlsx, .xls, .csv) *</label>
+      <input type="file" id="sxFileInput" accept=".xlsx,.xls,.csv" style="width:100%; padding:10px; background:#f8fafc;">
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('schoolExcelModal').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" id="sxUploadBtn" onclick="confirmSchoolExcelUpload()"><i class="fas fa-cloud-upload-alt"></i> Upload Students Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CLOUD IMAGE STORAGE MODAL ================= -->
+<div id="storageModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-top:0; color:#0284c7;"><i class="fas fa-cloud-upload-alt"></i> Free Cloud Image Storage (Cloudinary)</h3>
+    <p style="font-size:12.5px; color:#555; line-height:1.5;">
+      Configure your free Cloudinary account once here. It automatically syncs to all Client and School portals so photos and backgrounds upload straight to Cloudinary CDN.
+    </p>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Storage Provider</label>
+      <select id="stProvider" style="width:100%;">
+        <option value="cloudinary">Cloudinary (25 GB Free CDN - Recommended)</option>
+        <option value="imgbb">ImgBB (Free API Key)</option>
+        <option value="base64">Compressed Firestore Fallback</option>
+      </select>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Cloudinary Cloud Name</label>
+      <input type="text" id="stCloudName" placeholder="e.g. borxawcr" value="borxawcr" style="width:100%; font-family:monospace;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Cloudinary Unsigned Upload Preset *</label>
+      <input type="text" id="stUploadPreset" placeholder="e.g. idcards_unsigned" style="width:100%; font-family:monospace;">
+    </div>
+    <div style="margin-bottom:18px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">ImgBB API Key (Optional if using ImgBB)</label>
+      <input type="text" id="stImgbbKey" placeholder="Optional ImgBB Key" style="width:100%; font-family:monospace;">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('storageModal').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStorageConfig()">Save & Activate Everywhere</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CLIENT CREATE/EDIT/DELETE MODAL ================= -->
+<div id="clientModal" class="modal">
+  <div class="modal-content">
+    <h3 id="clientModalTitle" style="margin-top:0; color:#6b21a8;"><i class="fas fa-user-tie"></i> Manage Client Account</h3>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Client ID (Unique Login Username) *</label>
+      <input type="text" id="clId" placeholder="e.g. an_digital or client01" style="width:100%; font-family:monospace; font-weight:700;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Client / Agency Name *</label>
+      <input type="text" id="clName" placeholder="e.g. AN Digital Services" style="width:100%;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Client Mobile Number *</label>
+      <input type="tel" id="clPhone" placeholder="10-digit mobile" style="width:100%;">
+    </div>
+    <div style="margin-bottom:18px;">
+      <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:4px;">Client Portal Password *</label>
+      <input type="text" id="clPass" placeholder="Create password" style="width:100%;">
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-top:12px; border-top:1px solid #eee;">
+      <button class="btn btn-danger" id="deleteClientModalBtn" onclick="deleteClientAccount()" style="display:none;"><i class="fas fa-trash"></i> Delete Client</button>
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="btn btn-secondary" onclick="document.getElementById('clientModal').style.display='none'">Cancel</button>
+        <button class="btn btn-purple" id="saveClientBtn" onclick="saveClient()">Save Client</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= UNIVERSAL DRAG & DROP CARD DESIGNER MODAL ================= -->
+<div id="layoutEditorModal" class="modal layout-editor-modal">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h3 style="color:#6b21a8; margin:0;"><i class="fas fa-paint-roller"></i> Universal Drag-and-Drop ID Card Designer</h3>
+        <span style="font-size:12px; color:#64748b;">Drag any text or photo box directly on the preview canvas to position it</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="font-size:12.5px; font-weight:700; color:#0b53a0;">Language / Script Mode:</label>
+        <select id="le_lang_mode" onchange="debouncedUpdateLivePreview()" style="border-color:#6b21a8; font-weight:700;">
+          <option value="english">Standard (As Typed / English)</option>
+          <option value="odia">Odia Mode (Auto Odia Digits & Classes)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="le-grid">
+      <div class="le-controls">
+        <div class="le-field-box" style="background:#f3f8ff; border-color:#cce5ff;">
+          <strong>1. ID Card Background Image (PNG/JPG - 638x1012px)</strong>
+          <div id="le_current_bg_info" style="margin-bottom:6px; font-size:12px; color:#004085;"></div>
+          <input type="file" id="plBgInput" accept="image/png, image/jpeg" style="width:100%; padding:6px;">
+        </div>
+
+        <div class="le-field-box">
+          <strong>2. School Header, Address & HM Signature</strong>
+          <div class="le-inputs" style="margin-bottom:6px;">
+            <label><input type="checkbox" id="le_header_show" onchange="debouncedUpdateLivePreview()"> Show School Name & Address on Card</label>
+            <label>Header Y: <input type="number" id="le_header_y" value="55" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Color: <input type="color" id="le_header_color" value="#ffffff" onchange="debouncedUpdateLivePreview()"></label>
+          </div>
+          <div class="le-inputs">
+            <label><input type="checkbox" id="le_sign_show" onchange="debouncedUpdateLivePreview()"> Show HM Signature</label>
+            <label>X: <input type="number" id="le_sign_x" value="430" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Y: <input type="number" id="le_sign_y" value="850" oninput="debouncedUpdateLivePreview()"></label>
+          </div>
+        </div>
+
+        <div class="le-field-box">
+          <strong>3. Student Photo Box (Drag on Canvas)</strong>
+          <div class="le-inputs">
+            <label>X: <input type="number" id="le_photo_x" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Y: <input type="number" id="le_photo_y" oninput="debouncedUpdateLivePreview()"></label>
+            <label>W: <input type="number" id="le_photo_w" oninput="debouncedUpdateLivePreview()"></label>
+            <label>H: <input type="number" id="le_photo_h" oninput="debouncedUpdateLivePreview()"></label>
+            <label>Shape:
+              <select id="le_photo_shape" onchange="debouncedUpdateLivePreview()" style="padding:4px; font-size:12px;">
+                <option value="rect">Rectangle</option>
+                <option value="circle">Circle</option>
+              </select>
+            </label>
+            <label>Corner R: <input type="number" id="le_photo_r" oninput="debouncedUpdateLivePreview()" style="width:48px;"></label>
+            <label>Border: <input type="color" id="le_photo_border_color" value="#000000" onchange="debouncedUpdateLivePreview()"></label>
+            <label><input type="checkbox" id="le_photo_show" onchange="debouncedUpdateLivePreview()"> Show</label>
+          </div>
+        </div>
+
+        <div id="layoutFieldsContainer"></div>
+      </div>
+
+      <div class="le-preview">
+        <div style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.8); color:white; font-size:11px; padding:6px 10px; border-radius:6px; z-index:10; pointer-events:none;">
+          <i class="fas fa-arrows-alt"></i> Click & Drag Photo or Text to Position
+        </div>
+        <canvas id="plCanvas" style="max-height:96%; max-width:96%; box-shadow:0 12px 32px rgba(0,0,0,0.25); cursor:grab;"></canvas>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('layoutEditorModal').style.display='none'">Close</button>
+      <button class="btn btn-purple" id="saveLayoutBtn" onclick="saveLayoutSettings()"><i class="fas fa-save"></i> Save Card Layout</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EDIT STUDENT MODAL (DYNAMICALLY FILTERED BY CHOSEN FIELDS) ================= -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-top:0; margin-bottom:4px;">Edit Student Record</h3>
+    <div id="adminModalFieldsNote" style="font-size:11.5px; color:#0b53a0; font-weight:600; margin-bottom:14px;"></div>
+    <input type="hidden" id="editId">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+      <div id="aw-name" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Full Name</label><input type="text" id="editName" style="width:100%;"></div>
+      <div id="aw-class">
+        <label style="font-size:12px; font-weight:700;">Class</label>
+        <select id="editClass" style="width:100%;">
+          <option value="">Select Class</option>
+          <option value="Shishuvatika">Shishuvatika / Nursery</option>
+          <option value="1">Class 1</option>
+          <option value="2">Class 2</option>
+          <option value="3">Class 3</option>
+          <option value="4">Class 4</option>
+          <option value="5">Class 5</option>
+          <option value="6">Class 6</option>
+          <option value="7">Class 7</option>
+          <option value="8">Class 8</option>
+          <option value="9">Class 9</option>
+          <option value="10">Class 10</option>
+          <option value="11">Class 11</option>
+          <option value="12">Class 12</option>
+        </select>
+      </div>
+      <div id="aw-roll"><label style="font-size:12px; font-weight:700;">Roll No</label><input type="text" id="editRoll" style="width:100%;"></div>
+      <div id="aw-dob"><label style="font-size:12px; font-weight:700;">Date of Birth</label><input type="date" id="editDob" style="width:100%;"></div>
+      <div id="aw-blood">
+        <label style="font-size:12px; font-weight:700;">Blood Group</label>
+        <select id="editBlood" style="width:100%;">
+          <option value="">Select</option>
+          <option value="A+">A+</option><option value="A-">A-</option>
+          <option value="B+">B+</option><option value="B-">B-</option>
+          <option value="O+">O+</option><option value="O-">O-</option>
+          <option value="AB+">AB+</option><option value="AB-">AB-</option>
+        </select>
+      </div>
+      <div id="aw-phone"><label style="font-size:12px; font-weight:700;">Mobile</label><input type="text" id="editPhone" style="width:100%;"></div>
+      <div id="aw-father"><label style="font-size:12px; font-weight:700;">Father's Name</label><input type="text" id="editFather" style="width:100%;"></div>
+      <div id="aw-mother"><label style="font-size:12px; font-weight:700;">Mother's Name</label><input type="text" id="editMother" style="width:100%;"></div>
+      <div id="aw-address" style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Address</label><input type="text" id="editAddress" style="width:100%;"></div>
+      <div id="adminExtraFieldsGrid" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px;">
+      <button class="btn btn-warning" onclick="previewSingleStudentCard()"><i class="fas fa-eye"></i> Preview ID Card</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" id="saveEditBtn" onclick="saveStudentEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EDIT SCHOOL CONFIG MODAL ================= -->
+<div id="editSchoolModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-top:0; color:#0b53a0;"><i class="fas fa-cog"></i> School Master Settings</h3>
+    <input type="hidden" id="esOldUdise">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:12px; font-weight:700;">Assigned Client</label>
+        <select id="esClient" style="width:100%;"></select>
+      </div>
+      <div style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">School Name</label><input type="text" id="esName" style="width:100%;"></div>
+      <div><label style="font-size:12px; font-weight:700;">UDISE Code</label><input type="text" id="esUdise" maxlength="11" style="width:100%; font-family:monospace;"></div>
+      <div><label style="font-size:12px; font-weight:700;">Contact Phone</label><input type="text" id="esPhone" style="width:100%;"></div>
+      <div><label style="font-size:12px; font-weight:700;">Block</label><input type="text" id="esBlock" style="width:100%;"></div>
+      <div><label style="font-size:12px; font-weight:700;">District</label><input type="text" id="esDistrict" style="width:100%;"></div>
+      <div><label style="font-size:12px; font-weight:700;">Pin Code</label><input type="text" id="esPin" style="width:100%;"></div>
+      <div><label style="font-size:12px; font-weight:700;">School App Password</label><input type="text" id="esAppPassword" style="width:100%;"></div>
+      <div style="grid-column:1/-1;"><label style="font-size:12px; font-weight:700;">Official UDISE Auto-Load Password (Admin Only)</label><input type="text" id="esUdisePass" style="width:100%;"></div>
+    </div>
+
+    <div style="background:#f3e8ff; padding:12px; border-radius:10px; margin-bottom:12px;">
+      <label style="font-size:12px; font-weight:800; color:#6b21a8; display:block; margin-bottom:6px;">Required ID Card & UDISE Fields for School Link (All 32 Fields)</label>
+      <div id="esCustomFieldsBox" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; font-size:12px; max-height:220px; overflow-y:auto; padding-right:4px;"></div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px; font-weight:700;">Update HM Signature (Optional)</label>
+      <input type="file" id="esSignInput" accept="image/*" style="width:100%;">
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-top:12px; border-top:1px solid #eee;">
+      <button class="btn btn-danger" onclick="deleteEntireSchool()"><i class="fas fa-trash"></i> Delete School</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" onclick="document.getElementById('editSchoolModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" id="saveSchoolBtn" onclick="saveSchoolConfig()">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div id="adminPreviewModal" class="modal">
+  <div class="modal-content" style="text-align:center; max-width:360px;">
+    <h3 style="margin-top:0;">Rendered ID Card Preview</h3>
+    <img id="adminPreviewImg" src="" style="width:100%; border-radius:10px; box-shadow:0 8px 25px rgba(0,0,0,0.25);">
+    <button class="btn btn-secondary" style="width:100%; margin-top:16px; justify-content:center;" onclick="document.getElementById('adminPreviewModal').style.display='none'">Close</button>
+  </div>
+</div>
+
+<script>
+const CARD_W = 638, CARD_H = 1012;
+const ALL_AVAILABLE_FIELDS = [
+  'name', 'class', 'section', 'roll', 'dob', 'gender', 'blood',
+  'phone', 'alternatePhone', 'father', 'mother', 'guardian', 'address', 'pincode', 'email',
+  'pen', 'aadhaar', 'nameAsAadhaar', 'apaarId', 'admissionNo', 'admissionDate',
+  'socialCategory', 'minorityGroup', 'motherTongue', 'bpl', 'aay', 'ews', 'cwsn', 'impairmentType',
+  'stateCode', 'entryStatus', 'studentId'
+];
+const EXTRA_STUDENT_FIELDS = [
+  'section', 'gender', 'alternatePhone', 'guardian', 'pincode', 'email',
+  'pen', 'aadhaar', 'nameAsAadhaar', 'apaarId', 'admissionNo', 'admissionDate',
+  'socialCategory', 'minorityGroup', 'motherTongue', 'bpl', 'aay', 'ews', 'cwsn', 'impairmentType',
+  'stateCode', 'entryStatus', 'studentId'
+];
+const FIELD_LABELS = {
+  name: 'NAME', class: 'CLASS', section: 'SEC', roll: 'ROLL NO', dob: 'D.O.B.', gender: 'GENDER', blood: 'BLOOD G.',
+  phone: 'CONTACT', alternatePhone: 'ALT. MOB', father: 'FATHER', mother: 'MOTHER', guardian: 'GUARDIAN',
+  address: 'ADDRESS', pincode: 'PINCODE', email: 'EMAIL',
+  pen: 'PEN', aadhaar: 'AADHAAR', nameAsAadhaar: 'AADHAAR NAME', apaarId: 'APAAR ID',
+  admissionNo: 'ADM. NO', admissionDate: 'ADM. DATE', socialCategory: 'CATEGORY',
+  minorityGroup: 'MINORITY', motherTongue: 'MOTHER TONGUE', bpl: 'BPL', aay: 'AAY', ews: 'EWS',
+  cwsn: 'CWSN', impairmentType: 'IMPAIRMENT', stateCode: 'STATE CODE', entryStatus: 'STATUS', studentId: 'STUDENT ID'
+};
+const FIELD_LABELS_ODIA = {
+  name: 'ନାମ', class: 'ଶ୍ରେଣୀ', section: 'ବିଭାଗ', roll: 'ରୋଲ୍ ନଂ', dob: 'ଜନ୍ମ ତାରିଖ', gender: 'ଲିଙ୍ଗ', blood: 'ରକ୍ତ ବର୍ଗ',
+  phone: 'ମୋବାଇଲ୍ ନଂ', alternatePhone: 'ବିକଳ୍ପ ନଂ', father: 'ପିତାଙ୍କ ନାମ', mother: 'ମାତାଙ୍କ ନାମ', guardian: 'ଅଭିଭାବକ',
+  address: 'ଠିକଣା', pincode: 'ପିନ୍ କୋଡ୍', email: 'ଇମେଲ୍',
+  pen: 'PEN ନଂ', aadhaar: 'ଆଧାର ନଂ', nameAsAadhaar: 'ଆଧାର ନାମ', apaarId: 'APAAR ଆଇଡି',
+  admissionNo: 'ନାମଲେଖା ନଂ', admissionDate: 'ନାମଲେଖା ତାରିଖ', socialCategory: 'ବର୍ଗ',
+  minorityGroup: 'ସଂଖ୍ୟାଲଘୁ', motherTongue: 'ମାତୃଭାଷା', bpl: 'BPL', aay: 'AAY', ews: 'EWS',
+  cwsn: 'CWSN', impairmentType: 'ଭିନ୍ନକ୍ଷମ ପ୍ରକାର', stateCode: 'ରାଜ୍ୟ କୋଡ୍', entryStatus: 'ସ୍ଥିତି', studentId: 'ଛାତ୍ର ଆଇଡି'
+};
+const EXCEL_HEADER_NAMES = {
+  name: 'Name', class: 'Class', section: 'Section', roll: 'Roll No', dob: 'DOB', gender: 'Gender', blood: 'Blood Group',
+  phone: 'Phone Number', alternatePhone: 'Alternate Phone', father: "Father's Name", mother: "Mother's Name",
+  guardian: "Guardian's Name", address: 'Address', pincode: 'Pincode', email: 'Email ID',
+  pen: 'PEN', aadhaar: 'AADHAAR Number', nameAsAadhaar: 'Name as per AADHAAR', apaarId: 'APAAR ID',
+  admissionNo: 'Admission Number', admissionDate: 'Admission Date', socialCategory: 'Social Category',
+  minorityGroup: 'Minority Group', motherTongue: 'Mother Tongue', bpl: 'BPL Beneficiary', aay: 'AAY Beneficiary',
+  ews: 'EWS Group', cwsn: 'CWSN', impairmentType: 'Impairment Type', stateCode: 'Student State Code',
+  entryStatus: 'Entry Status', studentId: 'Student ID'
+};
+window.odiaDigits = ['୦','୧','୨','୩','୪','୫','୬','୭','୮','୯'];
+
+const ADMIN_PASSWORD = "Anwesh@1998";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA91DzdFor6pil6YPiY8bdAbsQICPwbdCw",
+  authDomain: "id-cards-e66e3.firebaseapp.com",
+  projectId: "id-cards-e66e3",
+  storageBucket: "id-cards-e66e3.firebasestorage.app",
+  messagingSenderId: "500450999702",
+  appId: "1:500450999702:web:27f0b1ef61653f2c3ab1b7"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+let db = firebase.firestore(), cacheDb = null;
+let schoolsMap = JSON.parse(localStorage.getItem('adminSchoolsMapV3')) || {};
+let clientsMap = JSON.parse(localStorage.getItem('adminClientsMapV3')) || {};
+let lastSyncId = Number(localStorage.getItem('adminLastSyncIdV3')) || 0;
+let cloudConfig = JSON.parse(localStorage.getItem('cloudStorageConfig')) || { provider: 'cloudinary', cloudName: 'borxawcr', uploadPreset: '', imgbbKey: '' };
+
+let activeMainTab = 'clients';
+let activeUdise = null;
+let currentSchoolStudents = [];
+let filteredStudentsCache = [];
+let tableVisibleLimit = 50;
+let selectedStudentIds = new Set();
+let unsubscribeAdminStudents = null;
+
+window.assets = { fontLoaded: false, aiModel: 'pending' };
+const globalImageCache = {};
+
+/* ================= UTILITIES & DATE / ODIA CONVERTERS ================= */
+function escapeHtml(s) { return (!s) ? '' : String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c])); }
+function escapeJs(s) { return (!s) ? '' : String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+
+function fromOdiaDigits(str) {
+  if (!str) return '';
+  return String(str).replace(/[୦-୯]/g, ch => String(window.odiaDigits.indexOf(ch)));
+}
+
+function formatDateForCard(dateStr) {
+  if (!dateStr) return '';
+  const clean = fromOdiaDigits(String(dateStr).trim());
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    const [y, m, d] = clean.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return String(dateStr).trim();
+}
+
+// Universal Date Parser: Converts DD/MM/YYYY, DD-MM-YYYY, Odia dates, or Excel serial numbers into YYYY-MM-DD
+function formatDateForInput(dateStr) {
+  if (!dateStr) return '';
+  dateStr = fromOdiaDigits(String(dateStr).trim());
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{5}$/.test(dateStr)) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const dateObj = new Date(excelEpoch.getTime() + (parseInt(dateStr) * 86400000));
+    return dateObj.toISOString().split('T')[0];
+  }
+  const parts = dateStr.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    let p0 = parts[0].trim(), p1 = parts[1].trim(), p2 = parts[2].trim();
+    if (p0.length === 4) return `${p0}-${p1.padStart(2, '0')}-${p2.padStart(2, '0')}`;
+    if (p2.length === 2 || p2.length === 4) {
+      let y = p2.length === 2 ? (Number(p2) > 50 ? "19" + p2 : "20" + p2) : p2;
+      return `${y}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
+    }
+  }
+  return dateStr;
+}
+
+function normalizeClass(cls) {
+  if (!cls) return "";
+  const raw = fromOdiaDigits(String(cls)).replace(/ଶ୍ରେଣୀ[\s\-:]*/g, '').trim();
+  const odiaRev = { 'ଶିଶୁବାଟିକା':'Shishuvatika', 'ଶିଶୁ ବାଟିକା':'Shishuvatika', 'ପ୍ରଥମ':'1', 'ଦ୍ଵିତୀୟ':'2', 'ଦ୍ୱିତୀୟ':'2', 'ତୃତୀୟ':'3', 'ଚତୁର୍ଥ':'4', 'ପଞ୍ଚମ':'5', 'ଷଷ୍ଠ':'6', 'ସପ୍ତମ':'7', 'ଅଷ୍ଟମ':'8', 'ନବମ':'9', 'ଦଶମ':'10', 'ଏକାଦଶ':'11', 'ଦ୍ଵାଦଶ':'12', 'ଦ୍ୱାଦଶ':'12' };
+  if (odiaRev[raw]) return odiaRev[raw];
+  const c = raw.toLowerCase().replace(/[\s\-\.]/g, '');
+  if (odiaRev[c]) return odiaRev[c];
+  const map = { '1':'1','i':'1','01':'1','1st':'1','class1':'1', '2':'2','ii':'2','02':'2','2nd':'2','class2':'2', '3':'3','iii':'3','03':'3','3rd':'3','class3':'3', '4':'4','iv':'4','04':'4','4th':'4','class4':'4', '5':'5','v':'5','05':'5','5th':'5','class5':'5', '6':'6','vi':'6','06':'6','6th':'6','class6':'6', '7':'7','vii':'7','07':'7','7th':'7','class7':'7', '8':'8','viii':'8','08':'8','8th':'8','class8':'8', '9':'9','ix':'9','09':'9','9th':'9','class9':'9', '10':'10','x':'10','10th':'10','class10':'10', '11':'11','xi':'11','11th':'11','class11':'11', '12':'12','xii':'12','12th':'12','class12':'12' };
+  if (map[c]) return map[c];
+  if (['shishuvatika','shishu','nursery','lkg','ukg','pp1','pp2'].includes(c)) return "Shishuvatika";
+  return raw;
+}
+
+function toOdiaDigits(str, mode) {
+  if (str === undefined || str === null) return '';
+  if (mode !== 'odia') return String(str);
+  return String(str).replace(/\d/g, d => window.odiaDigits[d] || d);
+}
+
+function toOdiaClass(str, mode) {
+  const norm = normalizeClass(str);
+  if (mode !== 'odia') return norm;
+  const odiaMap = { 'Shishuvatika':'ଶିଶୁ ବାଟିକା', '1':'ପ୍ରଥମ', '2':'ଦ୍ଵିତୀୟ', '3':'ତୃତୀୟ', '4':'ଚତୁର୍ଥ', '5':'ପଞ୍ଚମ', '6':'ଷଷ୍ଠ', '7':'ସପ୍ତମ', '8':'ଅଷ୍ଟମ', '9':'ନବମ', '10':'ଦଶମ', '11':'ଏକାଦଶ', '12':'ଦ୍ଵାଦଶ' };
+  return odiaMap[norm] || toOdiaDigits(norm, 'odia');
+}
+
+function getStudentSource(d) {
+  if (d.source) return d.source;
+  if (d.batchId || d.isExcel || d.finalised === false) return 'excel';
+  return 'manual';
+}
+
+async function loadCachedImage(url) {
+  if (!url) return null;
+  if (globalImageCache[url]) return globalImageCache[url];
+  const img = new Image();
+  if (!url.startsWith('data:')) img.crossOrigin = "Anonymous";
+  img.src = url;
+  await new Promise(r => {
+    const t = setTimeout(r, 10000);
+    img.onload = () => { clearTimeout(t); r(); };
+    img.onerror = () => { clearTimeout(t); r(); };
+  });
+  if (img.width > 0 && !url.startsWith('data:')) globalImageCache[url] = img;
+  return img;
+}
+
+/* ================= CLOUDINARY / IMGBB / FALLBACK UPLOAD ENGINE ================= */
+async function compressImageToDataUrl(fileOrBlob, maxW, maxH, quality = 0.82, mime = 'image/jpeg') {
+  const img = new Image();
+  const url = typeof fileOrBlob === 'string' ? fileOrBlob : URL.createObjectURL(fileOrBlob);
+  img.src = url;
+  await new Promise(r => { img.onload = r; img.onerror = r; });
+  if (typeof fileOrBlob !== 'string') URL.revokeObjectURL(url);
+  let w = img.width || maxW, h = img.height || maxH;
+  if (w > maxW || h > maxH) {
+    const ratio = Math.min(maxW / w, maxH / h);
+    w = Math.round(w * ratio); h = Math.round(h * ratio);
+  }
+  const cvs = document.createElement('canvas');
+  cvs.width = w; cvs.height = h;
+  cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+  return cvs.toDataURL(mime, quality);
+}
+
+async function uploadImageToCloud(fileOrDataUrl, folder = 'idcards', maxW = 638, maxH = 1012, mime = 'image/jpeg') {
+  const compressedDataUrl = await compressImageToDataUrl(fileOrDataUrl, maxW, maxH, 0.85, mime);
+  if (cloudConfig.provider === 'cloudinary') {
+    if (cloudConfig.cloudName && cloudConfig.uploadPreset) {
+      try {
+        const fd = new FormData();
+        fd.append('file', compressedDataUrl);
+        fd.append('upload_preset', cloudConfig.uploadPreset);
+        fd.append('folder', folder);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudConfig.cloudName}/image/upload`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.secure_url) return data.secure_url;
+      } catch (e) { console.warn("Cloudinary fallback to compressed image:", e); }
+    } else {
+      console.warn("Cloudinary upload preset is missing. Please configure it in storage-config.html.");
+    }
+  }
+  if (cloudConfig.provider === 'imgbb' && cloudConfig.imgbbKey) {
+    try {
+      const fd = new FormData();
+      fd.append('image', compressedDataUrl.split(',')[1]);
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${cloudConfig.imgbbKey}`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.data && data.data.url) return data.data.url;
+    } catch (e) { console.warn("ImgBB fallback:", e); }
+  }
+  return compressedDataUrl;
+}
+
+function openStorageModal() {
+  document.getElementById('stProvider').value = cloudConfig.provider || 'cloudinary';
+  document.getElementById('stCloudName').value = cloudConfig.cloudName || 'borxawcr';
+  document.getElementById('stUploadPreset').value = cloudConfig.uploadPreset || '';
+  document.getElementById('stImgbbKey').value = cloudConfig.imgbbKey || '';
+  document.getElementById('storageModal').style.display = 'flex';
+}
+
+async function saveStorageConfig() {
+  cloudConfig = {
+    provider: document.getElementById('stProvider').value,
+    cloudName: document.getElementById('stCloudName').value.trim(),
+    uploadPreset: document.getElementById('stUploadPreset').value.trim(),
+    imgbbKey: document.getElementById('stImgbbKey').value.trim(),
+    updatedAt: Date.now()
+  };
+  localStorage.setItem('cloudStorageConfig', JSON.stringify(cloudConfig));
+  await db.collection('settings').doc('storageConfig').set(cloudConfig, { merge: true });
+  document.getElementById('storageModal').style.display = 'none';
+  alert("Cloud Storage configuration saved and synced to all portals!");
+}
+
+/* ================= AUTH & INITIALIZATION ================= */
+if (sessionStorage.getItem('adminAuthed') === 'true') unlockAdmin();
+document.getElementById('adminPasswordBtn').onclick = () => {
+  if (document.getElementById('adminPasswordInput').value === ADMIN_PASSWORD) {
+    sessionStorage.setItem('adminAuthed', 'true');
+    unlockAdmin();
+  } else {
+    document.getElementById('adminPasswordError').style.display = 'block';
+  }
+};
+document.getElementById('adminPasswordInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('adminPasswordBtn').click(); });
+
+function initAdminCacheDB() {
+  const req = indexedDB.open('AdminStudentCacheDB', 1);
+  req.onupgradeneeded = e => {
+    const idb = e.target.result;
+    if (!idb.objectStoreNames.contains('students')) {
+      const st = idb.createObjectStore('students', { keyPath: 'id' });
+      st.createIndex('udise', 'udise', { unique: false });
+    }
+  };
+  req.onsuccess = e => { cacheDb = e.target.result; };
+}
+
+function unlockAdmin() {
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('mainContainer').style.display = 'block';
+  initAdminCacheDB();
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA91DzdFor6pil6YPiY8bdAbsQICPwbdCw",
+    authDomain: "id-cards-e66e3.firebaseapp.com",
+    projectId: "id-cards-e66e3",
+    storageBucket: "id-cards-e66e3.firebasestorage.app",
+    messagingSenderId: "500450999702",
+    appId: "1:500450999702:web:27f0b1ef61653f2c3ab1b7",
+    measurementId: "G-CGTVC8FEHC"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+
+  db.collection('settings').doc('storageConfig').get().then(doc => {
+    if (doc.exists) {
+      cloudConfig = doc.data();
+      localStorage.setItem('cloudStorageConfig', JSON.stringify(cloudConfig));
+    }
+    updateCloudStatusBadge();
+  }).catch(() => { updateCloudStatusBadge(); });
+
+  loadAutoAssets();
+  initializeFaceDetector();
+  populateClientDropdowns();
+  switchMainTab('clients');
+  quickSync();
+}
+
+function updateCloudStatusBadge() {
+  const el = document.getElementById('cloudStatusBadge');
+  if (!el) return;
+  if (cloudConfig.provider === 'cloudinary') {
+    if (!cloudConfig.uploadPreset) {
+      el.className = 'badge badge-pending';
+      el.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Cloudinary Preset Missing';
+      el.title = 'Set Cloudinary upload preset in storage-config.html';
+    } else {
+      el.className = 'badge badge-printed';
+      el.innerHTML = '<i class="fas fa-cloud"></i> Cloudinary CDN Active';
+      el.title = `Connected to Cloudinary (${cloudConfig.cloudName})`;
+    }
+  } else if (cloudConfig.provider === 'imgbb') {
+    el.className = 'badge badge-printed';
+    el.innerHTML = '<i class="fas fa-cloud"></i> ImgBB Active';
+  } else {
+    el.className = 'badge badge-ready';
+    el.innerHTML = '<i class="fas fa-database"></i> Firestore Storage Fallback';
+  }
+}
+
+async function loadAutoAssets() {
+  try {
+    const resp = await fetch('OdiaFont.ttf');
+    if (resp.ok) {
+      const buf = await resp.arrayBuffer();
+      const font = new FontFace('OdiaFont', buf);
+      await font.load();
+      document.fonts.add(font);
+      window.assets.fontLoaded = true;
+      document.getElementById('fontStatus').className = 'badge badge-printed';
+      document.getElementById('fontStatus').textContent = 'OdiaFont Auto-Loaded';
+      return;
+    }
+  } catch(e) {}
+  try {
+    if (document.fonts && document.fonts.load) {
+      await document.fonts.load('700 24px "Noto Sans Oriya"').catch(() => {});
+      window.assets.fontLoaded = true;
+      document.getElementById('fontStatus').className = 'badge badge-printed';
+      document.getElementById('fontStatus').textContent = 'Odia Font Ready';
+    }
+  } catch(e) {}
+}
+
+document.getElementById('fontInput').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const buf = await f.arrayBuffer();
+  const font = new FontFace('OdiaFont', buf);
+  await font.load();
+  document.fonts.add(font);
+  window.assets.fontLoaded = true;
+  document.getElementById('fontStatus').className = 'badge badge-printed';
+  document.getElementById('fontStatus').textContent = 'Custom Font Ready';
+};
+
+/* ================= MEDIAPIPE FACE DETECTOR ================= */
+let faceDetector = null;
+async function initializeFaceDetector() {
+  try {
+    const mod = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs");
+    const fileset = await mod.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    faceDetector = await mod.FaceDetector.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite", delegate: "GPU" },
+      minDetectionConfidence: 0.5, runningMode: "IMAGE"
+    });
+    window.assets.aiModel = 'loaded';
+    document.getElementById('aiStatus').innerHTML = "✅ AI Face Crop Active";
+  } catch (e) {
+    window.assets.aiModel = 'failed';
+    document.getElementById('aiStatus').innerHTML = "⚠️ Standard Center Crop";
+  }
+}
+
+/* ================= ZERO-STUDENT-READ DASHBOARD SYNC ================= */
+async function quickSync() {
+  const btn = document.getElementById('quickSyncBtn');
+  if (btn) btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Syncing...";
+  try {
+    const cSnap = await db.collection('clients').get();
+    const freshClients = {};
+    cSnap.forEach(doc => { freshClients[doc.id] = { id: doc.id, ...doc.data() }; });
+    clientsMap = freshClients;
+    localStorage.setItem('adminClientsMapV3', JSON.stringify(clientsMap));
+    populateClientDropdowns();
+
+    const sSnap = await db.collection('schools').get();
+    const freshSchools = {};
+    let maxId = lastSyncId;
+
+    sSnap.forEach(doc => {
+      const d = doc.data();
+      const u = String(doc.id).trim();
+      freshSchools[u] = {
+        udise: u,
+        name: d.name || 'Unnamed School',
+        clientId: d.clientId || 'ADMIN',
+        block: d.block || '', district: d.district || '', pin: d.pin || '',
+        phone: d.phone || '', signature: d.hmSignature || '',
+        appPassword: d.appPassword || '', udisePass: d.udisePass || '',
+        importStatus: d.importStatus || 'manual',
+        submittedForPrint: d.submittedForPrint || false,
+        submittedForPrintAt: d.submittedForPrintAt || 0,
+        customFields: d.customFields || ['name', 'class', 'roll', 'dob', 'blood', 'phone'],
+        layoutSettings: d.layoutSettings || null,
+        privateTemplateUrl: d.privateTemplateUrl || null,
+        completedCount: d.completedCount || 0,
+        pendingCount: d.pendingCount || 0,
+        printedCount: d.printedCount || 0,
+        latestActivity: d.lastModified || d.createdAt || 0,
+        firstActivity: d.createdAt || Date.now()
+      };
+      maxId = Math.max(maxId, d.lastModified || 0);
+    });
+
+    schoolsMap = freshSchools;
+    lastSyncId = maxId;
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+    localStorage.setItem('adminLastSyncIdV3', String(lastSyncId));
+    renderDashboard();
+  } catch (e) { console.error(e); }
+  finally { if (btn) btn.innerHTML = "<i class='fas fa-bolt'></i> Quick Sync"; }
+}
+
+async function rebuildSchoolsMap() {
+  if (!confirm("Recalculate all school student counters from the database?")) return;
+  const btn = document.getElementById('fullSyncBtn');
+  btn.disabled = true; btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Rebuilding...";
+  try {
+    await quickSync();
+    const studentSnap = await db.collection('students').get();
+    const counts = {};
+    studentSnap.forEach(doc => {
+      const d = doc.data();
+      if (!d.udise) return;
+      const uStr = String(d.udise).trim();
+      if (!counts[uStr]) counts[uStr] = { completedCount: 0, pendingCount: 0, printedCount: 0 };
+      if (d.finalised !== false) counts[uStr].completedCount++;
+      else counts[uStr].pendingCount++;
+      if (d.isPrinted) counts[uStr].printedCount++;
+    });
+
+    for (const u of Object.keys(schoolsMap)) {
+      const c = counts[u] || { completedCount: 0, pendingCount: 0, printedCount: 0 };
+      schoolsMap[u].completedCount = c.completedCount;
+      schoolsMap[u].pendingCount = c.pendingCount;
+      schoolsMap[u].printedCount = c.printedCount;
+      await db.collection('schools').doc(u).set(c, { merge: true });
+    }
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+    renderDashboard();
+  } catch (e) { alert("Error: " + e.message); }
+  finally { btn.disabled = false; btn.innerHTML = "<i class='fas fa-sync'></i> Rebuild Counters"; }
+}
+
+function populateClientDropdowns() {
+  const filterSel = document.getElementById('dashClientFilter');
+  const esSel = document.getElementById('esClient');
+  const currFilter = filterSel.value;
+
+  let filterHtml = '<option value="all">All Clients (Direct + Partners)</option><option value="ADMIN">Direct (Master Admin)</option>';
+  let assignHtml = '<option value="ADMIN">Direct (Master Admin)</option>';
+
+  Object.values(clientsMap).forEach(c => {
+    filterHtml += `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} (${escapeHtml(c.id)})</option>`;
+    assignHtml += `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} (${escapeHtml(c.id)})</option>`;
+  });
+
+  filterSel.innerHTML = filterHtml;
+  filterSel.value = currFilter || 'all';
+  if (esSel) esSel.innerHTML = assignHtml;
+}
+
+/* ================= DASHBOARD RENDERING ================= */
+function switchMainTab(tab) {
+  activeMainTab = tab;
+  ['Clients', 'Schools', 'SubmittedPrint', 'AutoLoad'].forEach(t => {
+    const el = document.getElementById('tab' + t);
+    if (el) el.classList.remove('active');
+  });
+  if (tab === 'clients') document.getElementById('tabClients').classList.add('active');
+  if (tab === 'schools') document.getElementById('tabSchools').classList.add('active');
+  if (tab === 'submitted') document.getElementById('tabSubmittedPrint').classList.add('active');
+  if (tab === 'autoload') document.getElementById('tabAutoLoad').classList.add('active');
+
+  document.getElementById('schoolFiltersBar').classList.toggle('hidden', tab === 'clients');
+  document.getElementById('schoolGrid').classList.toggle('hidden', tab === 'clients');
+  document.getElementById('clientGrid').classList.toggle('hidden', tab !== 'clients');
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const allSchools = Object.values(schoolsMap);
+  document.getElementById('countClients').textContent = Object.keys(clientsMap).length;
+  document.getElementById('countSchools').textContent = allSchools.length;
+
+  const submittedCount = allSchools.filter(s => s.submittedForPrint).length;
+  const subTab = document.getElementById('tabSubmittedPrint');
+  if (subTab) {
+    if (submittedCount > 0 && activeMainTab !== 'submitted') {
+      subTab.innerHTML = `<i class="fas fa-print"></i> Submitted for Printing <span class="autoload-pulse" style="background:#16a34a;">${submittedCount}</span>`;
+    } else {
+      subTab.innerHTML = `<i class="fas fa-print"></i> Submitted for Printing (<span id="countSubmittedPrint">${submittedCount}</span>)`;
+    }
+  }
+
+  const autoCount = allSchools.filter(s => s.importStatus === 'pending').length;
+  const autoTab = document.getElementById('tabAutoLoad');
+  if (autoCount > 0 && activeMainTab !== 'autoload') {
+    autoTab.innerHTML = `<i class="fas fa-magic"></i> UDISE Auto-Load <span class="autoload-pulse">${autoCount}</span>`;
+  } else {
+    autoTab.innerHTML = `<i class="fas fa-magic"></i> UDISE Auto-Load Requests (<span id="countAutoLoad">${autoCount}</span>)`;
+  }
+
+  if (activeMainTab === 'clients') {
+    renderClientsGrid();
+    return;
+  }
+
+  const grid = document.getElementById('schoolGrid');
+  grid.innerHTML = '';
+
+  const search = (document.getElementById('dashSearch').value || '').toLowerCase();
+  const clientFilter = document.getElementById('dashClientFilter').value;
+  const sortMode = document.getElementById('dashSort').value;
+
+  let list = allSchools.filter(s => {
+    if (activeMainTab === 'autoload' && s.importStatus !== 'pending') return false;
+    if (activeMainTab === 'submitted' && !s.submittedForPrint) return false;
+    if (clientFilter !== 'all' && (s.clientId || 'ADMIN') !== clientFilter) return false;
+    const match = (s.udise || '').toLowerCase().includes(search) ||
+                  (s.name || '').toLowerCase().includes(search) ||
+                  (s.district || '').toLowerCase().includes(search);
+    return match;
+  });
+
+  list.sort((a, b) => {
+    if (sortMode === 'studentsHigh') return ((b.completedCount||0)+(b.pendingCount||0)) - ((a.completedCount||0)+(a.pendingCount||0));
+    if (sortMode === 'regNew') return (b.firstActivity||0) - (a.firstActivity||0);
+    if (activeMainTab === 'submitted') return (b.submittedForPrintAt||b.latestActivity||0) - (a.submittedForPrintAt||a.latestActivity||0);
+    return (b.latestActivity||0) - (a.latestActivity||0);
+  });
+
+  if (list.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:45px; background:white; border-radius:14px; color:#64748b;">No schools found in this view.</div>`;
+    return;
+  }
+
+  list.forEach(s => {
+    const clientName = clientsMap[s.clientId]?.name || (s.clientId === 'ADMIN' ? 'Direct Admin' : s.clientId);
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    let topBadges = `<span class="badge badge-ready"><i class="fas fa-user-tie"></i> ${escapeHtml(clientName)}</span>`;
+    if (s.submittedForPrint) topBadges += ` <span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac;"><i class="fas fa-print"></i> Submitted for Printing</span>`;
+    if (s.importStatus === 'pending') topBadges += ` <span class="badge badge-autoload"><i class="fas fa-hourglass-half"></i> Auto-Load Requested</span>`;
+
+    let credsHtml = '';
+    if (s.appPassword || s.udisePass) {
+      credsHtml = `<div style="margin-top:10px; display:flex; flex-direction:column; gap:5px; font-size:12px;">`;
+      if (s.appPassword) credsHtml += `<div style="background:#f1f5f9; padding:5px 8px; border-radius:6px;">🔑 Link Pass: <b>${escapeHtml(s.appPassword)}</b></div>`;
+      if (s.udisePass) credsHtml += `<div style="background:#fff3cd; color:#856404; padding:5px 8px; border-radius:6px;">🏛️ UDISE Pass (Admin Only): <b>${escapeHtml(s.udisePass)}</b></div>`;
+      credsHtml += `</div>`;
+    }
+
+    card.innerHTML = `
+      <div onclick="openSchoolDetail('${escapeJs(s.udise)}')" style="cursor:pointer;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          ${topBadges}
+        </div>
+        <h3 style="margin:0; color:#0b53a0; font-family:monospace; font-size:1.25rem;">UDISE: ${escapeHtml(s.udise)}</h3>
+        <div style="color:#E85C0D; font-weight:800; font-size:15.5px; margin-top:4px;">${escapeHtml(s.name)}</div>
+        <div style="font-size:12.5px; color:#64748b; margin-top:3px;">${escapeHtml(s.block)} ${escapeHtml(s.district)}</div>
+        <div style="margin-top:10px; font-size:12.5px; display:flex; gap:12px; font-weight:700;">
+          <span style="color:#16a34a;"><i class="fas fa-check-circle"></i> ${s.completedCount || 0} Ready</span>
+          <span style="color:#d97706;"><i class="fas fa-clock"></i> ${s.pendingCount || 0} Pending</span>
+          <span style="color:#0284c7;"><i class="fas fa-print"></i> ${s.printedCount || 0} Printed</span>
+        </div>
+        ${credsHtml}
+      </div>
+      <div style="margin-top:14px; padding-top:12px; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
+        <button class="btn btn-outline" style="padding:6px 10px; font-size:12px;" onclick="openSchoolDetail('${escapeJs(s.udise)}')"><i class="fas fa-folder-open"></i> Open & Print</button>
+        <button class="btn btn-outline" style="padding:6px 10px; font-size:12px;" onclick="openSchoolEdit('${escapeJs(s.udise)}')"><i class="fas fa-cog"></i></button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+/* ================= CLIENT MANAGEMENT (CREATE / EDIT / DELETE) ================= */
+function renderClientsGrid() {
+  const grid = document.getElementById('clientGrid');
+  grid.innerHTML = '';
+  const list = Object.values(clientsMap);
+  if (list.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:45px; background:white; border-radius:14px;">No clients added yet. Click <b>"+ New Client"</b> above to create your first client account.</div>`;
+    return;
+  }
+  list.forEach(c => {
+    const clientSchools = Object.values(schoolsMap).filter(s => s.clientId === c.id);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div>
+        <span class="badge badge-purple">Client ID: ${escapeHtml(c.id)}</span>
+        <h3 style="margin:8px 0 4px 0; color:#1e293b;">${escapeHtml(c.name)}</h3>
+        <div style="font-size:13px; color:#64748b;"><i class="fas fa-phone"></i> ${escapeHtml(c.phone || 'N/A')}</div>
+        <div style="margin-top:10px; background:#f8fafc; padding:8px 10px; border-radius:8px; font-size:12.5px;">
+          Password: <b>${escapeHtml(c.password)}</b>
+        </div>
+        <div style="margin-top:10px; font-size:13px; font-weight:700; color:#0b53a0;">
+          Total Schools Managed: ${clientSchools.length}
+        </div>
+      </div>
+      <div style="margin-top:14px; padding-top:12px; border-top:1px solid #eee; display:flex; justify-content:space-between; gap:6px;">
+        <button class="btn btn-primary" style="font-size:12px; padding:6px 12px;" onclick="filterByClient('${escapeJs(c.id)}')"><i class="fas fa-school"></i> View Schools (${clientSchools.length})</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-outline" style="font-size:12px; padding:6px 10px;" onclick="openClientModal('${escapeJs(c.id)}')"><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-danger" style="font-size:12px; padding:6px 10px;" onclick="deleteClientDirect('${escapeJs(c.id)}')" title="Delete Client"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function filterByClient(clientId) {
+  document.getElementById('dashClientFilter').value = clientId;
+  switchMainTab('schools');
+}
+
+function openClientModal(clientId = null) {
+  const delBtn = document.getElementById('deleteClientModalBtn');
+  if (clientId && clientsMap[clientId]) {
+    const c = clientsMap[clientId];
+    document.getElementById('clId').value = c.id;
+    document.getElementById('clId').disabled = true;
+    document.getElementById('clName').value = c.name || '';
+    document.getElementById('clPhone').value = c.phone || '';
+    document.getElementById('clPass').value = c.password || '';
+    delBtn.style.display = 'inline-flex';
+  } else {
+    document.getElementById('clId').value = '';
+    document.getElementById('clId').disabled = false;
+    document.getElementById('clName').value = '';
+    document.getElementById('clPhone').value = '';
+    document.getElementById('clPass').value = '';
+    delBtn.style.display = 'none';
+  }
+  document.getElementById('clientModal').style.display = 'flex';
+}
+
+async function saveClient() {
+  const id = document.getElementById('clId').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const name = document.getElementById('clName').value.trim();
+  const phone = document.getElementById('clPhone').value.trim();
+  const password = document.getElementById('clPass').value.trim();
+  if (!id || !name || !password) return alert("Please fill Client ID, Name, and Password.");
+
+  const btn = document.getElementById('saveClientBtn');
+  btn.disabled = true; btn.textContent = "Saving...";
+  try {
+    const obj = { id, name, phone, password, updatedAt: Date.now() };
+    await db.collection('clients').doc(id).set(obj, { merge: true });
+    clientsMap[id] = obj;
+    localStorage.setItem('adminClientsMapV3', JSON.stringify(clientsMap));
+    populateClientDropdowns();
+    document.getElementById('clientModal').style.display = 'none';
+    renderDashboard();
+  } catch (e) { alert("Failed: " + e.message); }
+  finally { btn.disabled = false; btn.textContent = "Save Client"; }
+}
+
+async function deleteClientAccount() {
+  const clientId = document.getElementById('clId').value.trim();
+  if (!clientId) return;
+  await deleteClientDirect(clientId);
+  document.getElementById('clientModal').style.display = 'none';
+}
+
+async function deleteClientDirect(clientId) {
+  const c = clientsMap[clientId];
+  if (!c) return;
+  const clientSchools = Object.values(schoolsMap).filter(s => s.clientId === clientId);
+  if (!confirm(`Are you sure you want to delete Client "${c.name}" (${clientId})?`)) return;
+
+  let deleteSchoolsToo = false;
+  if (clientSchools.length > 0) {
+    deleteSchoolsToo = confirm(`This client manages ${clientSchools.length} school(s).\n\nClick OK to DELETE all ${clientSchools.length} schools and their student data.\nClick Cancel to KEEP the schools and reassign them to Direct Admin.`);
+  }
+
+  try {
+    for (const s of clientSchools) {
+      if (deleteSchoolsToo) {
+        await wipeSchoolAndStudents(s.udise);
+      } else {
+        await db.collection('schools').doc(s.udise).update({ clientId: 'ADMIN', lastModified: Date.now() });
+        schoolsMap[s.udise].clientId = 'ADMIN';
+      }
+    }
+    await db.collection('clients').doc(clientId).delete();
+    delete clientsMap[clientId];
+    localStorage.setItem('adminClientsMapV3', JSON.stringify(clientsMap));
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+    populateClientDropdowns();
+    renderDashboard();
+    alert(`Client "${c.name}" deleted successfully.`);
+  } catch (e) {
+    alert("Error deleting client: " + e.message);
+  }
+}
+
+async function wipeSchoolAndStudents(udise) {
+  const cleanUdise = String(udise).trim();
+  const snap = await db.collection('students').where('udise', '==', cleanUdise).get();
+  const chunks = [];
+  for (let i = 0; i < snap.docs.length; i += 400) chunks.push(snap.docs.slice(i, i + 400));
+  for (const chunk of chunks) {
+    const batch = db.batch();
+    chunk.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  await db.collection('schools').doc(cleanUdise).delete();
+  delete schoolsMap[cleanUdise];
+  localStorage.removeItem(`adminSchoolSync_${cleanUdise}`);
+}
+
+/* ================= SCHOOL DETAIL & WRONG PASSWORD TRIGGER ================= */
+function showDashboard() {
+  if (unsubscribeAdminStudents) { unsubscribeAdminStudents(); unsubscribeAdminStudents = null; }
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('dashboardView').classList.remove('hidden');
+  activeUdise = null;
+  selectedStudentIds.clear();
+  renderDashboard();
+}
+
+async function toggleAdminPrintSubmission(udise, state) {
+  await db.collection('schools').doc(udise).update({
+    submittedForPrint: state,
+    lastModified: Date.now()
+  });
+  if (schoolsMap[udise]) {
+    schoolsMap[udise].submittedForPrint = state;
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+  }
+  openSchoolDetail(udise);
+}
+
+async function markWrongPassword(udise) {
+  if (!confirm("Mark this UDISE password as WRONG? The School and Client will immediately see a red alert to re-enter it.")) return;
+  await db.collection('schools').doc(udise).update({
+    importStatus: 'wrong_password',
+    udisePass: '',
+    lastModified: Date.now()
+  });
+  if (schoolsMap[udise]) {
+    schoolsMap[udise].importStatus = 'wrong_password';
+    schoolsMap[udise].udisePass = '';
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+  }
+  openSchoolDetail(udise);
+}
+
+function copySchoolMagicLink() {
+  const s = schoolsMap[activeUdise];
+  if (!s) return;
+  const baseUrl = window.location.origin + window.location.pathname.replace('admin.html', 'index.html');
+  const link = `${baseUrl}?u=${encodeURIComponent(s.udise)}&p=${encodeURIComponent(s.appPassword || '')}&c=${encodeURIComponent(s.clientId || 'ADMIN')}`;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(link).then(() => {
+      alert("School Custom Magic Link copied!\n\n" + link);
+    }).catch(() => {
+      prompt("Copy this link manually:", link);
+    });
+  } else {
+    prompt("Copy this link manually:", link);
+  }
+}
+
+async function openSchoolDetail(udise) {
+  const cleanUdise = String(udise).trim();
+  const s = schoolsMap[cleanUdise];
+  if (!s) return;
+  activeUdise = cleanUdise;
+  selectedStudentIds.clear();
+
+  document.getElementById('viewUdiseHead').textContent = `UDISE: ${s.udise}`;
+  document.getElementById('viewSchoolNameMaster').textContent = s.name;
+  const cName = clientsMap[s.clientId]?.name || 'Direct Admin';
+  document.getElementById('viewClientBadge').textContent = `Client: ${cName}`;
+
+  document.getElementById('viewAddress').textContent = `📍 ${s.block || ''} ${s.district || ''} - ${s.pin || ''}`;
+  document.getElementById('viewContact').textContent = `📞 ${s.phone || 'N/A'}`;
+  document.getElementById('viewActiveFields').innerHTML = `<b>Configured Fields:</b> ${(s.customFields || []).map(f => f.toUpperCase()).join(' • ')}`;
+
+  let credHtml = '';
+  if (s.appPassword) credHtml += `<div class="badge badge-ready" style="font-size:13px; padding:7px 12px;">🔑 School Link Pass: <b>${escapeHtml(s.appPassword)}</b></div>`;
+  if (s.submittedForPrint) {
+    credHtml += `<div class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-size:13px; padding:7px 12px;">🖨️ <b>Submitted by Client for Printing</b> <button class="btn btn-outline" style="padding:3px 8px; font-size:11px; margin-left:8px; background:#fff;" onclick="toggleAdminPrintSubmission('${escapeJs(cleanUdise)}', false)">✔ Clear Queue Flag</button></div>`;
+  }
+  if (s.udisePass) {
+    credHtml += `<div class="badge badge-autoload" style="font-size:13px; padding:7px 12px;">🏛️ Official UDISE Pass (Admin Only): <b>${escapeHtml(s.udisePass)}</b> <button class="btn btn-danger" style="padding:3px 8px; font-size:11px; margin-left:8px;" onclick="markWrongPassword('${escapeJs(cleanUdise)}')">❌ Wrong Password</button></div>`;
+  }
+  document.getElementById('viewCredentials').innerHTML = credHtml;
+
+  const signImg = document.getElementById('viewHmSign');
+  const sigUrl = s.signature || s.hmSignature || '';
+  signImg.src = sigUrl;
+  signImg.style.display = sigUrl ? 'inline-block' : 'none';
+
+  document.getElementById('dashboardView').classList.add('hidden');
+  document.getElementById('detailView').classList.remove('hidden');
+
+  const tbody = document.querySelector('#studentTable tbody');
+  tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:35px;">Loading students...</td></tr>`;
+
+  // Unsubscribe previous listener if any
+  if (unsubscribeAdminStudents) { unsubscribeAdminStudents(); unsubscribeAdminStudents = null; }
+
+  // Use onSnapshot for live updates from schools/clients
+  let isFirstSnap = true;
+  unsubscribeAdminStudents = db.collection('students').where('udise', '==', cleanUdise).onSnapshot(async snap => {
+    currentSchoolStudents = [];
+    const classes = new Set();
+    snap.forEach(doc => {
+      const d = doc.data();
+      d._source = getStudentSource(d);
+      currentSchoolStudents.push(d);
+      if (d.class) classes.add(normalizeClass(d.class));
+    });
+
+    if (currentSchoolStudents.length === 0 && !isNaN(Number(cleanUdise))) {
+      try {
+        const numSnap = await db.collection('students').where('udise', '==', Number(cleanUdise)).get();
+        numSnap.forEach(doc => {
+          const d = doc.data();
+          d._source = getStudentSource(d);
+          currentSchoolStudents.push(d);
+          if (d.class) classes.add(normalizeClass(d.class));
+          db.collection('students').doc(doc.id).update({ udise: cleanUdise }).catch(() => {});
+        });
+      } catch (e) {}
+    }
+
+    const compCount = currentSchoolStudents.filter(st => st.finalised !== false).length;
+    const pendCount = currentSchoolStudents.length - compCount;
+    const prtCount = currentSchoolStudents.filter(st => st.isPrinted).length;
+    if (s.completedCount !== compCount || s.pendingCount !== pendCount || s.printedCount !== prtCount) {
+      s.completedCount = compCount; s.pendingCount = pendCount; s.printedCount = prtCount;
+      localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+      db.collection('schools').doc(cleanUdise).update({ completedCount: compCount, pendingCount: pendCount, printedCount: prtCount }).catch(() => {});
+    }
+
+    const cSelect = document.getElementById('classFilterSelect');
+    const prevClass = isFirstSnap ? 'all' : cSelect.value;
+    cSelect.innerHTML = '<option value="all">All Classes</option>';
+    Array.from(classes).sort().forEach(c => {
+      cSelect.innerHTML += `<option value="${escapeHtml(c)}">Class ${escapeHtml(c)}</option>`;
+    });
+    cSelect.value = classes.has(prevClass) ? prevClass : 'all';
+
+    if (activeUdise !== cleanUdise) return;
+    if (isFirstSnap) { isFirstSnap = false; resetAndRenderTable(); }
+    else renderTable(); // live update: keep current filters & scroll position
+  }, err => {
+    console.error('Student live sync error:', err);
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:35px; color:#dc2626;">Could not load students (${escapeHtml(err.message)}). Check internet and reopen this school.</td></tr>`;
+  });
+}
+
+/* ================= FAST PAGINATED STUDENT TABLE ================= */
+function resetAndRenderTable() {
+  tableVisibleLimit = 50;
+  renderTable();
+}
+
+function loadMoreTableRows() {
+  tableVisibleLimit += 50;
+  renderTable();
+}
+
+function renderTable() {
+  const search = (document.getElementById('studentSearchInput').value || '').toLowerCase();
+  const srcFilter = document.getElementById('sourceFilterSelect').value;
+  const clsFilter = document.getElementById('classFilterSelect').value;
+  const prtFilter = document.getElementById('printFilterSelect').value;
+  const revFilter = document.getElementById('reviewFilterSelect').value;
+  const sortMode = document.getElementById('studentSortSelect').value;
+
+  filteredStudentsCache = currentSchoolStudents.filter(s => {
+    if (srcFilter !== 'all' && s._source !== srcFilter) return false;
+    if (clsFilter !== 'all' && normalizeClass(s.class) !== clsFilter) return false;
+    if (prtFilter === 'printed' && !s.isPrinted) return false;
+    if (prtFilter === 'unprinted' && s.isPrinted) return false;
+    if (revFilter === 'reviewed' && s.finalised === false) return false;
+    if (revFilter === 'not_reviewed' && s.finalised !== false) return false;
+    if (search) {
+      const m = (s.name || '').toLowerCase().includes(search) || String(s.roll || '').toLowerCase().includes(search);
+      if (!m) return false;
+    }
+    return true;
+  });
+
+  filteredStudentsCache.sort((a, b) => {
+    if (sortMode === 'rollAsc') return (parseInt(a.roll)||9999) - (parseInt(b.roll)||9999);
+    if (sortMode === 'nameAsc') return (a.name || '').localeCompare(b.name || '');
+    return (Number(b.id) || 0) - (Number(a.id) || 0);
+  });
+
+  document.getElementById('totalFilteredCount').textContent = filteredStudentsCache.length;
+
+  const tbody = document.querySelector('#studentTable tbody');
+  tbody.innerHTML = '';
+
+  if (filteredStudentsCache.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:35px; color:#64748b;">No matching students found.</td></tr>`;
+    document.getElementById('loadMoreContainer').style.display = 'none';
+    updateSelectionUI();
+    return;
+  }
+
+  const slice = filteredStudentsCache.slice(0, tableVisibleLimit);
+  slice.forEach((s, idx) => {
+    const tr = document.createElement('tr');
+    const checked = selectedStudentIds.has(String(s.id)) ? 'checked' : '';
+    const statusBadge = s.finalised === false
+      ? `<span class="badge badge-pending">Pending Review</span>`
+      : (s.isPrinted ? `<span class="badge badge-printed">Printed</span>` : `<span class="badge badge-ready">Ready</span>`);
+
+    const srcBadge = s._source === 'excel'
+      ? `<span class="badge badge-purple">Excel</span>`
+      : `<span class="badge badge-ready">Manual</span>`;
+
+    tr.innerHTML = `
+      <td style="text-align:center;"><input type="checkbox" class="sel" value="${s.id}" ${checked} onchange="toggleRowSelect('${s.id}', this.checked)" style="transform:scale(1.2);"></td>
+      <td><b>${idx + 1}</b></td>
+      <td><img class="thumb" loading="lazy" src="${s.photoBase64 || ''}" crossorigin="anonymous" onerror="this.style.opacity=0.2"></td>
+      <td style="font-weight:700;">${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(normalizeClass(s.class))}</td>
+      <td>${escapeHtml(s.roll)}</td>
+      <td>${escapeHtml(s.dob)}</td>
+      <td>${escapeHtml(s.bloodGroup || s.blood || '-')}</td>
+      <td>${escapeHtml(s.mobile || s.phone || '-')}</td>
+      <td style="font-size:12px; color:#555;">${escapeHtml(s.father || '')} ${s.address ? '• ' + escapeHtml(s.address) : ''}</td>
+      <td>${srcBadge}</td>
+      <td>${statusBadge}</td>
+      <td style="text-align:right;">
+        <button class="btn btn-outline" style="padding:5px 10px;" onclick="openEditModal('${s.id}')"><i class="fas fa-pen"></i></button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const moreBox = document.getElementById('loadMoreContainer');
+  if (filteredStudentsCache.length > tableVisibleLimit) {
+    moreBox.style.display = 'block';
+    document.getElementById('shownCountTxt').textContent = `${slice.length} of ${filteredStudentsCache.length}`;
+  } else {
+    moreBox.style.display = 'none';
+  }
+  updateSelectionUI();
+}
+
+function toggleRowSelect(idStr, isChecked) {
+  if (isChecked) selectedStudentIds.add(String(idStr));
+  else selectedStudentIds.delete(String(idStr));
+  updateSelectionUI();
+}
+
+document.getElementById('selectAll').onchange = e => {
+  const slice = filteredStudentsCache.slice(0, tableVisibleLimit);
+  slice.forEach(s => {
+    if (e.target.checked) selectedStudentIds.add(String(s.id));
+    else selectedStudentIds.delete(String(s.id));
+  });
+  document.querySelectorAll('.sel').forEach(cb => cb.checked = e.target.checked);
+  updateSelectionUI();
+};
+
+function selectAllFilteredStudents() {
+  filteredStudentsCache.forEach(s => selectedStudentIds.add(String(s.id)));
+  document.querySelectorAll('.sel').forEach(cb => cb.checked = true);
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const n = selectedStudentIds.size;
+  document.getElementById('selectionCount').textContent = `${n} selected`;
+  const hasSel = n > 0;
+  document.getElementById('bulkDeleteBtn').disabled = !hasSel;
+  document.getElementById('markPrintedBtn').disabled = !hasSel;
+  document.getElementById('markUnprintedBtn').disabled = !hasSel;
+  document.getElementById('generateBtn').disabled = !hasSel;
+}
+
+/* ================= SCHOOL-SPECIFIC EXCEL UPLOAD MODAL & TEMPLATE GENERATOR ================= */
+function openSchoolExcelModal() {
+  if (!activeUdise || !schoolsMap[activeUdise]) return;
+  const s = schoolsMap[activeUdise];
+  document.getElementById('sxSchoolInfo').textContent = `${s.name} (UDISE: ${s.udise})`;
+  document.getElementById('sxFileInput').value = '';
+
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const badgesContainer = document.getElementById('sxRequiredColumnsBadges');
+  badgesContainer.innerHTML = '';
+
+  fields.forEach(f => {
+    const colHeader = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    badgesContainer.innerHTML += `<span class="badge" style="background:#dcfce7; color:#166534; border:1px solid #86efac; font-size:12.5px; padding:6px 12px; font-family:monospace;">${escapeHtml(colHeader)}</span>`;
+  });
+
+  document.getElementById('schoolExcelModal').style.display = 'flex';
+}
+
+function downloadSampleSchoolExcel() {
+  if (!activeUdise || !schoolsMap[activeUdise]) return;
+  const s = schoolsMap[activeUdise];
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+
+  const sampleRow = {};
+  fields.forEach(f => {
+    const colHeader = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    if (f === 'name') sampleRow[colHeader] = 'Student Full Name';
+    else if (f === 'class') sampleRow[colHeader] = '5';
+    else if (f === 'roll') sampleRow[colHeader] = '1';
+    else if (f === 'dob') sampleRow[colHeader] = '2014-05-15';
+    else if (f === 'blood') sampleRow[colHeader] = 'O+';
+    else if (f === 'phone') sampleRow[colHeader] = '9876543210';
+    else sampleRow[colHeader] = '';
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet([sampleRow]);
+  XLSX.utils.book_append_sheet(wb, ws, "Students_Template");
+  const safeName = (s.name || s.udise).replace(/[^a-zA-Z0-9]/g, '_');
+  XLSX.writeFile(wb, `${safeName}_${s.udise}_Excel_Template.xlsx`);
+}
+
+function confirmSchoolExcelUpload() {
+  const file = document.getElementById('sxFileInput').files[0];
+  if (!file) return alert("Please select an Excel file (.xlsx, .xls, or .csv) first.");
+  if (!activeUdise || !schoolsMap[activeUdise]) return;
+  const s = schoolsMap[activeUdise];
+  parseAndUploadExcelFile(file, s.udise, s.name, s.clientId || 'ADMIN');
+}
+
+function parseAndUploadExcelFile(file, udise, schoolName, clientId) {
+  const btn = document.getElementById('sxUploadBtn');
+  btn.disabled = true; btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Uploading...";
+
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+      if (rows.length === 0) {
+        btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+        return alert("Excel sheet is empty!");
+      }
+
+      const parsed = rows.map(row => {
+        let s = { name: '', class: '', roll: '', dob: '', mobile: '', bloodGroup: '', father: '', mother: '', address: '' };
+        for (let key in row) {
+          let val = row[key] !== undefined ? String(row[key]).trim() : '';
+          let k = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (['name','studentname','fullname','student'].includes(k)) s.name = val;
+          else if (['class','grade','std','standard'].includes(k)) s.class = normalizeClass(val);
+          else if (['roll','rollno','rollnumber','sn','rollnum'].includes(k)) s.roll = val;
+          else if (['dob','dateofbirth','birthdate'].includes(k)) s.dob = formatDateForInput(val);
+          else if (['mobile','mobileno','mob','phone','phonenumber','contact','contactno'].includes(k)) s.mobile = val;
+          else if (['blood','bloodgroup','bg'].includes(k)) s.bloodGroup = val;
+          else if (['father','fathername','fathersname'].includes(k)) s.father = val;
+          else if (['mother','mothername','mothersname'].includes(k)) s.mother = val;
+          else if (['address','homeaddress','village','addr'].includes(k)) s.address = val;
+          else if (['section','sec'].includes(k)) s.section = val;
+          else if (['gender','sex'].includes(k)) s.gender = val;
+          else if (['pen','studentpen','nationalcode'].includes(k)) s.pen = val;
+          else if (['aadhaar','aadhaarnumber','aadhaarno','aadhar','aadharno'].includes(k)) s.aadhaar = val;
+          else if (['nameasperaadhaar','aadhaarname'].includes(k)) s.nameAsAadhaar = val;
+          else if (['apaarid','abcid','apaar'].includes(k)) s.apaarId = val;
+          else if (['guardian','guardiansname','guardianname'].includes(k)) s.guardian = val;
+          else if (['alternatephone','altphone','alternatemobile'].includes(k)) s.alternatePhone = val;
+          else if (['pincode','pin','postalcode'].includes(k)) s.pincode = val;
+          else if (['admissionnumber','admissionno','admno'].includes(k)) s.admissionNo = val;
+          else if (['admissiondate','admdate'].includes(k)) s.admissionDate = val;
+          else if (['socialcategory','category','caste'].includes(k)) s.socialCategory = val;
+          else if (['minoritygroup','minority'].includes(k)) s.minorityGroup = val;
+          else if (['mothertongue','language'].includes(k)) s.motherTongue = val;
+          else if (['bplbeneficiary','bpl'].includes(k)) s.bpl = val;
+          else if (['aaybeneficiary','aay'].includes(k)) s.aay = val;
+          else if (['ewsgroup','ews'].includes(k)) s.ews = val;
+          else if (['cwsn'].includes(k)) s.cwsn = val;
+          else if (['impairmenttype','impairment','disability'].includes(k)) s.impairmentType = val;
+          else if (['emailid','email'].includes(k)) s.email = val;
+          else if (['studentstatecode','statecode'].includes(k)) s.stateCode = val;
+          else if (['entrystatus','status'].includes(k)) s.entryStatus = val;
+          else if (['studentid','udisestudentid'].includes(k)) s.studentId = val;
+        }
+        return s;
+      }).filter(s => s.name && s.name !== 'Student Full Name');
+
+      if (parsed.length === 0) {
+        btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+        return alert("No valid 'Name' column detected in Excel.");
+      }
+
+      const cleanUdise = String(udise).trim();
+      const existingSchool = schoolsMap[cleanUdise] || {};
+      const chunks = [];
+      for (let i = 0; i < parsed.length; i += 400) chunks.push(parsed.slice(i, i + 400));
+
+      let baseId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+      for (const chunk of chunks) {
+        const batch = db.batch();
+        chunk.forEach(st => {
+          const id = baseId++;
+          batch.set(db.collection('students').doc(String(id)), {
+            ...st,
+            id,
+            schoolName,
+            udise: cleanUdise,
+            clientId: existingSchool.clientId || clientId || 'ADMIN',
+            block: existingSchool.block || '',
+            district: existingSchool.district || '',
+            pin: existingSchool.pin || '',
+            hmSignature: existingSchool.signature || '',
+            photoBase64: null,
+            source: 'excel',
+            finalised: false,
+            createdAt: Date.now(),
+            lastModified: Date.now()
+          });
+        });
+        await batch.commit();
+      }
+
+      const newPendingCount = (existingSchool.pendingCount || 0) + parsed.length;
+      await db.collection('schools').doc(cleanUdise).set({
+        name: schoolName,
+        udise: cleanUdise,
+        clientId: existingSchool.clientId || clientId || 'ADMIN',
+        importStatus: 'manual',
+        pendingCount: newPendingCount,
+        lastModified: Date.now()
+      }, { merge: true });
+
+      document.getElementById('schoolExcelModal').style.display = 'none';
+      alert(`Successfully uploaded ${parsed.length} students from Excel to ${schoolName}!`);
+      await quickSync();
+      if (activeUdise === cleanUdise) openSchoolDetail(cleanUdise);
+    } catch (err) {
+      alert("Excel Upload Error: " + err.message);
+    } finally {
+      btn.disabled = false; btn.innerHTML = "<i class='fas fa-cloud-upload-alt'></i> Upload Students Now";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ================= UNIVERSAL DRAG & DROP CARD DESIGNER & RENDERER ================= */
+const canvas = document.getElementById('cardCanvas');
+const ctx = canvas.getContext('2d');
+
+function getDefaultLayout(customFields) {
+  const layout = {
+    langMode: 'english',
+    header: { show: true, y: 55, color: '#ffffff' },
+    sign: { show: true, x: 430, y: 850 },
+    photo: { x: 200, y: 190, w: 238, h: 300, shape: 'rect', radius: 10, borderColor: '#000000', show: true }
+  };
+  let y = 550;
+  (customFields || ['name', 'class', 'roll', 'dob', 'blood', 'phone']).forEach(f => {
+    layout[f] = {
+      x: f === 'name' ? Math.round(CARD_W / 2) : 60,
+      y: y,
+      size: f === 'name' ? 36 : 26,
+      color: '#1e293b',
+      align: f === 'name' ? 'center' : 'left',
+      showLabel: f !== 'name',
+      show: true
+    };
+    y += 46;
+  });
+  return layout;
+}
+
+async function drawUnifiedCard(s, sm) {
+  canvas.width = CARD_W;
+  canvas.height = CARD_H;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  const fields = (sm && sm.customFields && sm.customFields.length > 0) ? sm.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const layout = (sm && sm.layoutSettings) ? sm.layoutSettings : getDefaultLayout(fields);
+  const langMode = layout.langMode || 'english';
+  const fontFamily = (langMode === 'odia') ? 'OdiaFont, "Noto Sans Oriya", Arial, sans-serif' : 'Arial, OdiaFont, "Noto Sans Oriya", sans-serif';
+
+  if (sm && sm.privateTemplateUrl) {
+    const bgImg = await loadCachedImage(sm.privateTemplateUrl);
+    if (bgImg && bgImg.width > 0) ctx.drawImage(bgImg, 0, 0, CARD_W, CARD_H);
+  } else {
+    ctx.fillStyle = '#0b53a0';
+    ctx.fillRect(0, 0, CARD_W, 155);
+  }
+
+  if (!layout.header || layout.header.show !== false) {
+    const hy = parseInt(layout.header?.y) || 55;
+    ctx.fillStyle = layout.header?.color || '#ffffff';
+    ctx.textAlign = 'center';
+    const sName = sm?.name || s.schoolName || 'School Name';
+    let fs = 38;
+    ctx.font = `bold ${fs}px ${fontFamily}`;
+    while (ctx.measureText(sName).width > 580 && fs > 14) { fs--; ctx.font = `bold ${fs}px ${fontFamily}`; }
+    ctx.fillText(sName, CARD_W / 2, hy);
+
+    const addrParts = [sm?.block || s.block, sm?.district || s.district].filter(Boolean).join(', ');
+    if (addrParts) {
+      ctx.font = `24px ${fontFamily}`;
+      ctx.fillText(addrParts + (sm?.pin ? ' - ' + toOdiaDigits(sm.pin, langMode) : ''), CARD_W / 2, hy + 36);
+    }
+    if (sm?.udise) {
+      ctx.font = `21px ${fontFamily}`;
+      ctx.fillText('UDISE: ' + toOdiaDigits(sm.udise, langMode), CARD_W / 2, hy + 68);
+    }
+  }
+
+  if (layout.photo && layout.photo.show !== false) {
+    const px = parseInt(layout.photo.x) || 200, py = parseInt(layout.photo.y) || 190;
+    const pw = parseInt(layout.photo.w) || 238, ph = parseInt(layout.photo.h) || 300;
+    const shape = layout.photo.shape || 'rect';
+    const radius = parseInt(layout.photo.radius) || 0;
+    const border = 4;
+
+    ctx.save();
+    ctx.fillStyle = layout.photo.borderColor || '#000000';
+    ctx.beginPath();
+    if (shape === 'circle') ctx.arc(px + pw/2, py + ph/2, Math.min(pw, ph)/2 + border, 0, Math.PI*2);
+    else if (ctx.roundRect) ctx.roundRect(px - border, py - border, pw + border*2, ph + border*2, radius);
+    else ctx.rect(px - border, py - border, pw + border*2, ph + border*2);
+    ctx.fill();
+
+    ctx.beginPath();
+    if (shape === 'circle') ctx.arc(px + pw/2, py + ph/2, Math.min(pw, ph)/2, 0, Math.PI*2);
+    else if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, radius);
+    else ctx.rect(px, py, pw, ph);
+    ctx.clip();
+
+    if (s.photoBase64) {
+      const photo = await loadCachedImage(s.photoBase64);
+      if (photo && photo.width > 0) {
+        let sx = 0, sy = 0, sw = photo.width, sh = photo.height;
+        if (window.assets.aiModel === 'loaded' && faceDetector && !s.photoBase64.startsWith('data:image/svg')) {
+          try {
+            const det = faceDetector.detect(photo);
+            if (det.detections.length > 0) {
+              const b = det.detections[0].boundingBox;
+              const ax = b.width * 0.6, ay = b.height * 1.4;
+              sx = Math.max(0, b.originX - ax/2); sy = Math.max(0, b.originY - ay/2);
+              sw = Math.min(photo.width - sx, b.width + ax); sh = Math.min(photo.height - sy, b.height + ay);
+            }
+          } catch (e) {}
+        }
+        ctx.drawImage(photo, sx, sy, sw, sh, px, py, pw, ph);
+      } else { ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px, py, pw, ph); }
+    } else { ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px, py, pw, ph); }
+    ctx.restore();
+  }
+
+  for (const field of fields) {
+    const l = layout[field];
+    if (!l || l.show === false) continue;
+
+    ctx.fillStyle = l.color || '#1e293b';
+    ctx.font = `bold ${l.size || 26}px ${fontFamily}`;
+    ctx.textAlign = l.align || 'left';
+
+    let val = s[field] || (field === 'phone' ? s.mobile : (field === 'blood' ? s.bloodGroup : '')) || '';
+    if (field === 'class') val = toOdiaClass(val, langMode);
+    else if (field === 'dob' || field === 'admissionDate') val = toOdiaDigits(formatDateForCard(val), langMode);
+    else if (field === 'gender' && langMode === 'odia') {
+      const gLow = String(val).trim().toLowerCase();
+      if (gLow === 'male' || gLow === 'm' || gLow === 'boy') val = 'ବାଳକ';
+      else if (gLow === 'female' || gLow === 'f' || gLow === 'girl') val = 'ବାଳିକା';
+    }
+    else if (['roll', 'phone', 'alternatePhone', 'address', 'pincode', 'pen', 'aadhaar', 'apaarId', 'admissionNo', 'stateCode', 'studentId'].includes(field)) {
+      val = toOdiaDigits(val, langMode);
+    }
+    // Blood Group ('blood') is always kept in English (O+, A+, B+, AB+)
+
+    if (l.showLabel) {
+      if (langMode === 'odia') {
+        const lbl = FIELD_LABELS_ODIA[field] || FIELD_LABELS[field] || field.toUpperCase();
+        val = `${lbl} - ${val}`;
+      } else {
+        const lbl = FIELD_LABELS[field] || field.toUpperCase();
+        val = `${lbl}: ${val}`;
+      }
+    }
+    ctx.fillText(val, parseInt(l.x) || 0, parseInt(l.y) || 0);
+  }
+
+  const sigUrl = sm?.signature || sm?.hmSignature || s.hmSignature;
+  if ((!layout.sign || layout.sign.show !== false) && sigUrl) {
+    const signImg = await loadCachedImage(sigUrl);
+    if (signImg && signImg.width > 0) {
+      const sx = parseInt(layout.sign?.x) || 430, sy = parseInt(layout.sign?.y) || 850;
+      const ratio = Math.min(170 / signImg.width, 75 / signImg.height);
+      ctx.drawImage(signImg, sx, sy, signImg.width * ratio, signImg.height * ratio);
+    }
+  }
+
+  return await new Promise(r => canvas.toBlob(r, 'image/png'));
+}
+
+/* ================= DRAG-AND-DROP STUDIO CONTROLS ================= */
+function openLayoutEditor() {
+  const s = schoolsMap[activeUdise];
+  if (!s) return;
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  window.currentLayoutSettings = s.layoutSettings ? JSON.parse(JSON.stringify(s.layoutSettings)) : getDefaultLayout(fields);
+  window.currentPrivateTemplateUrl = s.privateTemplateUrl || null;
+
+  document.getElementById('le_lang_mode').value = window.currentLayoutSettings.langMode || 'english';
+  document.getElementById('le_header_show').checked = window.currentLayoutSettings.header?.show !== false;
+  document.getElementById('le_header_y').value = window.currentLayoutSettings.header?.y || 55;
+  document.getElementById('le_header_color').value = window.currentLayoutSettings.header?.color || '#ffffff';
+
+  document.getElementById('le_sign_show').checked = window.currentLayoutSettings.sign?.show !== false;
+  document.getElementById('le_sign_x').value = window.currentLayoutSettings.sign?.x || 430;
+  document.getElementById('le_sign_y').value = window.currentLayoutSettings.sign?.y || 850;
+
+  const p = window.currentLayoutSettings.photo || { x: 200, y: 190, w: 238, h: 300, shape: 'rect', radius: 10, borderColor: '#000000', show: true };
+  document.getElementById('le_photo_x').value = p.x;
+  document.getElementById('le_photo_y').value = p.y;
+  document.getElementById('le_photo_w').value = p.w;
+  document.getElementById('le_photo_h').value = p.h;
+  document.getElementById('le_photo_shape').value = p.shape || 'rect';
+  document.getElementById('le_photo_r').value = p.radius || 0;
+  document.getElementById('le_photo_border_color').value = p.borderColor || '#000000';
+  document.getElementById('le_photo_show').checked = p.show !== false;
+
+  const bgInfo = document.getElementById('le_current_bg_info');
+  bgInfo.innerHTML = window.currentPrivateTemplateUrl ? `✅ Custom Background Uploaded` : `⚠️ Using default header background. Upload PNG/JPG below.`;
+
+  const container = document.getElementById('layoutFieldsContainer');
+  container.innerHTML = '';
+  let defaultY = 550;
+  fields.forEach(f => {
+    const l = window.currentLayoutSettings[f] || { x: 60, y: defaultY, size: 26, color: '#1e293b', align: 'left', showLabel: f !== 'name', show: true };
+    container.innerHTML += `
+      <div class="le-field-box">
+        <strong>Field: ${f.toUpperCase()}</strong>
+        <div class="le-inputs">
+          <label>X: <input type="number" id="le_${f}_x" value="${l.x}" oninput="debouncedUpdateLivePreview()"></label>
+          <label>Y: <input type="number" id="le_${f}_y" value="${l.y}" oninput="debouncedUpdateLivePreview()"></label>
+          <label>Size: <input type="number" id="le_${f}_size" value="${l.size}" oninput="debouncedUpdateLivePreview()"></label>
+          <input type="color" id="le_${f}_color" value="${l.color || '#1e293b'}" onchange="debouncedUpdateLivePreview()">
+          <select id="le_${f}_align" onchange="debouncedUpdateLivePreview()" style="padding:4px; font-size:12px;">
+            <option value="left" ${l.align==='left'?'selected':''}>Left</option>
+            <option value="center" ${l.align==='center'?'selected':''}>Center</option>
+            <option value="right" ${l.align==='right'?'selected':''}>Right</option>
+          </select>
+          <label><input type="checkbox" id="le_${f}_label" ${l.showLabel?'checked':''} onchange="debouncedUpdateLivePreview()"> Label</label>
+          <label><input type="checkbox" id="le_${f}_show" ${l.show!==false?'checked':''} onchange="debouncedUpdateLivePreview()"> Show</label>
+        </div>
+      </div>
+    `;
+    defaultY += 46;
+  });
+
+  document.getElementById('layoutEditorModal').style.display = 'flex';
+  updateLivePreview();
+}
+
+document.getElementById('plBgInput').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const btn = document.getElementById('saveLayoutBtn');
+  btn.disabled = true; btn.textContent = "Uploading BG to Cloud...";
+  try {
+    window.currentPrivateTemplateUrl = await uploadImageToCloud(f, `templates/${activeUdise}`, 638, 1012, 'image/png');
+    document.getElementById('le_current_bg_info').innerHTML = `✅ New Background Active`;
+    updateLivePreview();
+  } catch (err) { alert("BG Upload error: " + err.message); }
+  finally { btn.disabled = false; btn.innerHTML = "<i class='fas fa-save'></i> Save Card Layout"; }
+};
+
+let previewTimer = null;
+function debouncedUpdateLivePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(updateLivePreview, 80);
+}
+
+async function updateLivePreview() {
+  const s = schoolsMap[activeUdise]; if (!s) return;
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const layout = {
+    langMode: document.getElementById('le_lang_mode').value,
+    header: {
+      show: document.getElementById('le_header_show').checked,
+      y: document.getElementById('le_header_y').value,
+      color: document.getElementById('le_header_color').value
+    },
+    sign: {
+      show: document.getElementById('le_sign_show').checked,
+      x: document.getElementById('le_sign_x').value,
+      y: document.getElementById('le_sign_y').value
+    },
+    photo: {
+      x: document.getElementById('le_photo_x').value,
+      y: document.getElementById('le_photo_y').value,
+      w: document.getElementById('le_photo_w').value,
+      h: document.getElementById('le_photo_h').value,
+      shape: document.getElementById('le_photo_shape').value,
+      radius: document.getElementById('le_photo_r').value,
+      borderColor: document.getElementById('le_photo_border_color').value,
+      show: document.getElementById('le_photo_show').checked
+    }
+  };
+  fields.forEach(f => {
+    if (!document.getElementById(`le_${f}_x`)) return;
+    layout[f] = {
+      x: document.getElementById(`le_${f}_x`).value,
+      y: document.getElementById(`le_${f}_y`).value,
+      size: document.getElementById(`le_${f}_size`).value,
+      color: document.getElementById(`le_${f}_color`).value,
+      align: document.getElementById(`le_${f}_align`).value,
+      showLabel: document.getElementById(`le_${f}_label`).checked,
+      show: document.getElementById(`le_${f}_show`).checked
+    };
+  });
+  window.currentLayoutSettings = layout;
+
+  const dummyAvatar = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23cbd5e1"/><circle cx="100" cy="75" r="38" fill="%2364748b"/><path d="M40 185c0-42 30-72 60-72s60 30 60 72v15H40v-15z" fill="%2364748b"/></svg>`;
+  const sampleStudent = currentSchoolStudents[0] || {
+    name: "Abinash Mahapatra", class: "10", roll: "01", dob: "2012-05-19", bloodGroup: "O+", mobile: "9876543210", father: "Ramesh Mahapatra", mother: "Sita Devi", address: "Koraput, Odisha", photoBase64: dummyAvatar
+  };
+
+  const blob = await drawUnifiedCard({ ...sampleStudent, photoBase64: sampleStudent.photoBase64 || dummyAvatar }, { ...s, layoutSettings: layout, privateTemplateUrl: window.currentPrivateTemplateUrl });
+  const plCanvas = document.getElementById('plCanvas');
+  plCanvas.width = CARD_W; plCanvas.height = CARD_H;
+  const img = new Image();
+  const url = URL.createObjectURL(blob);
+  img.src = url;
+  await new Promise(r => img.onload = r);
+  plCanvas.getContext('2d').drawImage(img, 0, 0);
+  URL.revokeObjectURL(url);
+}
+
+async function saveLayoutSettings() {
+  const btn = document.getElementById('saveLayoutBtn');
+  btn.disabled = true; btn.textContent = "Saving...";
+  try {
+    await db.collection('schools').doc(activeUdise).update({
+      layoutSettings: window.currentLayoutSettings,
+      privateTemplateUrl: window.currentPrivateTemplateUrl,
+      lastModified: Date.now()
+    });
+    schoolsMap[activeUdise].layoutSettings = window.currentLayoutSettings;
+    schoolsMap[activeUdise].privateTemplateUrl = window.currentPrivateTemplateUrl;
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+    document.getElementById('layoutEditorModal').style.display = 'none';
+  } catch (e) { alert("Error saving layout: " + e.message); }
+  finally { btn.disabled = false; btn.innerHTML = "<i class='fas fa-save'></i> Save Card Layout"; }
+}
+
+const plCanvas = document.getElementById('plCanvas');
+let dragTarget = null, dragOffX = 0, dragOffY = 0;
+
+function getPointerCoords(e) {
+  const r = plCanvas.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (cx - r.left) * (plCanvas.width / r.width), y: (cy - r.top) * (plCanvas.height / r.height) };
+}
+
+plCanvas.addEventListener('mousedown', startCanvasDrag);
+plCanvas.addEventListener('touchstart', startCanvasDrag, { passive: false });
+window.addEventListener('mousemove', moveCanvasDrag);
+window.addEventListener('touchmove', moveCanvasDrag, { passive: false });
+window.addEventListener('mouseup', () => dragTarget = null);
+window.addEventListener('touchend', () => dragTarget = null);
+
+function startCanvasDrag(e) {
+  const pos = getPointerCoords(e);
+  const s = schoolsMap[activeUdise]; if (!s) return;
+  const fields = (s.customFields && s.customFields.length > 0) ? s.customFields : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+
+  for (let i = fields.length - 1; i >= 0; i--) {
+    const f = fields[i];
+    const xEl = document.getElementById(`le_${f}_x`); if (!xEl) continue;
+    const x = parseInt(xEl.value) || 0, y = parseInt(document.getElementById(`le_${f}_y`).value) || 0;
+    const size = parseInt(document.getElementById(`le_${f}_size`).value) || 26;
+    const align = document.getElementById(`le_${f}_align`).value;
+    let bx = x, bw = size * 9, bh = size * 1.4, by = y - size;
+    if (align === 'center') bx = x - bw/2;
+    if (align === 'right') bx = x - bw;
+    if (pos.x >= bx && pos.x <= bx + bw && pos.y >= by && pos.y <= by + bh) {
+      dragTarget = f; dragOffX = pos.x - x; dragOffY = pos.y - y;
+      e.preventDefault(); return;
+    }
+  }
+
+  const px = parseInt(document.getElementById('le_photo_x').value) || 0;
+  const py = parseInt(document.getElementById('le_photo_y').value) || 0;
+  const pw = parseInt(document.getElementById('le_photo_w').value) || 238;
+  const ph = parseInt(document.getElementById('le_photo_h').value) || 300;
+  if (pos.x >= px && pos.x <= px + pw && pos.y >= py && pos.y <= py + ph) {
+    dragTarget = 'photo'; dragOffX = pos.x - px; dragOffY = pos.y - py;
+    e.preventDefault();
+  }
+}
+
+function moveCanvasDrag(e) {
+  if (!dragTarget) return;
+  const pos = getPointerCoords(e);
+  if (dragTarget === 'photo') {
+    document.getElementById('le_photo_x').value = Math.round(pos.x - dragOffX);
+    document.getElementById('le_photo_y').value = Math.round(pos.y - dragOffY);
+  } else {
+    document.getElementById(`le_${dragTarget}_x`).value = Math.round(pos.x - dragOffX);
+    document.getElementById(`le_${dragTarget}_y`).value = Math.round(pos.y - dragOffY);
+  }
+  debouncedUpdateLivePreview();
+  e.preventDefault();
+}
+
+/* ================= STREAMLINED 3-PART PRINT ZIP GENERATOR ================= */
+document.getElementById('generateBtn').onclick = async () => {
+  const targets = currentSchoolStudents.filter(s => selectedStudentIds.has(String(s.id)));
+  if (targets.length === 0) return;
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+
+  const zip = new JSZip();
+  const cardsFolder = zip.folder("ID_Cards_PNG");
+  const photosFolder = zip.folder("Student_Photos");
+  const excelRows = [];
+  const sm = schoolsMap[activeUdise];
+
+  try {
+    for (let i = 0; i < targets.length; i++) {
+      const s = targets[i];
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Rendering ${i + 1} / ${targets.length}...`;
+
+      const safeRoll = String(s.roll || (i + 1)).replace(/[^a-zA-Z0-9]/g, '');
+      const safeName = String(s.name || 'Student').replace(/[^a-zA-Z0-9]/g, '_');
+      const baseFileName = `${safeRoll}_${safeName}_${s.id}`;
+      const cardPngName = `${baseFileName}.png`;
+      let photoFileName = "NO_PHOTO";
+
+      const cardBlob = await drawUnifiedCard(s, sm);
+      cardsFolder.file(cardPngName, cardBlob);
+
+      if (s.photoBase64) {
+        try {
+          photoFileName = `Photo_${baseFileName}.jpg`;
+          const resp = await fetch(s.photoBase64);
+          const photoBlob = await resp.blob();
+          photosFolder.file(photoFileName, photoBlob);
+        } catch (pe) {
+          photoFileName = "PHOTO_ERROR";
+        }
+      }
+
+      const rowObj = {
+        Serial_No: i + 1,
+        UDISE: sm?.udise || s.udise || '',
+        School_Name: sm?.name || s.schoolName || '',
+        Student_Name: s.name || '',
+        Class: normalizeClass(s.class),
+        Section: s.section || '',
+        Roll_No: s.roll || '',
+        DOB: s.dob || '',
+        Gender: s.gender || '',
+        Blood_Group: s.bloodGroup || s.blood || '',
+        Mobile: s.mobile || s.phone || '',
+        Father_Name: s.father || '',
+        Mother_Name: s.mother || '',
+        Guardian_Name: s.guardian || '',
+        Address: s.address || '',
+        Pincode: s.pincode || '',
+        PEN: s.pen || '',
+        AADHAAR_Number: s.aadhaar || '',
+        APAAR_ID: s.apaarId || ''
+      };
+      (sm?.customFields || []).forEach(cf => {
+        if (EXTRA_STUDENT_FIELDS.includes(cf) && s[cf] !== undefined) {
+          const hdr = (EXCEL_HEADER_NAMES[cf] || cf).replace(/\s+/g, '_');
+          if (!(hdr in rowObj)) rowObj[hdr] = s[cf] || '';
+        }
+      });
+      rowObj.Photo_Name = photoFileName;
+      rowObj.Card_PNG_Name = cardPngName;
+      excelRows.push(rowObj);
+
+      // Yield every 2 cards to prevent tab freezing and keep UI responsive
+      if (i % 2 === 0) await new Promise(r => setTimeout(r, 20));
+    }
+
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Building Excel & Compressing ZIP...`;
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelRows);
+    XLSX.utils.book_append_sheet(wb, ws, "Students_Print_Data");
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    zip.file("School_Print_Data.xlsx", excelBuffer);
+
+    const zipBlob = await zip.generateAsync(
+      { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 4 } },
+      function(metadata) {
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Compressing ZIP ${metadata.percent.toFixed(0)}%...`;
+      }
+    );
+    const dl = document.createElement('a');
+    const zipUrl = URL.createObjectURL(zipBlob);
+    dl.href = zipUrl;
+    const cleanSchool = (sm?.name || activeUdise || 'School').replace(/[^a-zA-Z0-9]/g, '_');
+    dl.download = `${cleanSchool}_${activeUdise}_PrintPackage.zip`;
+    dl.click();
+    setTimeout(() => URL.revokeObjectURL(zipUrl), 8000);
+
+    if (confirm("ZIP Downloaded! Mark these selected students as 'Printed'?")) {
+      await markSelectedPrinted(true, true);
+    }
+  } catch (err) {
+    alert("Error generating Print ZIP: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fas fa-file-archive"></i> Download Final ZIP (PNGs + Photos + Excel)`;
+    updateSelectionUI();
+  }
+};
+
+/* ================= BULK ACTIONS & EDIT MODALS ================= */
+async function markSelectedPrinted(status, skipConfirm = false) {
+  const ids = Array.from(selectedStudentIds);
+  if (ids.length === 0) return;
+  const actionText = status ? "mark as Printed" : "unmark Printed status for";
+  if (!skipConfirm && !confirm(`Are you sure you want to ${actionText} ${ids.length} selected student(s)?`)) return;
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 400) chunks.push(ids.slice(i, i + 400));
+  for (const chunk of chunks) {
+    const batch = db.batch();
+    chunk.forEach(id => batch.update(db.collection('students').doc(String(id)), { isPrinted: status, lastModified: Date.now() }));
+    await batch.commit();
+  }
+  currentSchoolStudents.forEach(s => { if (selectedStudentIds.has(String(s.id))) s.isPrinted = status; });
+  const totalPrinted = currentSchoolStudents.filter(s => s.isPrinted).length;
+  if (schoolsMap[activeUdise]) {
+    schoolsMap[activeUdise].printedCount = totalPrinted;
+    await db.collection('schools').doc(activeUdise).update({ printedCount: totalPrinted, lastModified: Date.now() });
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+  }
+  renderTable();
+}
+
+async function bulkDeleteSelected() {
+  const ids = Array.from(selectedStudentIds);
+  if (ids.length === 0 || !confirm(`Permanently delete ${ids.length} selected students?`)) return;
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 400) chunks.push(ids.slice(i, i + 400));
+  for (const chunk of chunks) {
+    const batch = db.batch();
+    chunk.forEach(id => batch.delete(db.collection('students').doc(String(id))));
+    await batch.commit();
+  }
+  currentSchoolStudents = currentSchoolStudents.filter(s => !selectedStudentIds.has(String(s.id)));
+  selectedStudentIds.clear();
+
+  const compCount = currentSchoolStudents.filter(s => s.finalised !== false).length;
+  const pendCount = currentSchoolStudents.length - compCount;
+  if (schoolsMap[activeUdise]) {
+    schoolsMap[activeUdise].completedCount = compCount;
+    schoolsMap[activeUdise].pendingCount = pendCount;
+    await db.collection('schools').doc(activeUdise).update({ completedCount: compCount, pendingCount: pendCount, lastModified: Date.now() });
+    localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+  }
+  renderTable();
+}
+
+function ensureAdminExtraInputs() {
+  const grid = document.getElementById('adminExtraFieldsGrid');
+  if (!grid || grid.children.length > 0) return;
+  EXTRA_STUDENT_FIELDS.forEach(f => {
+    const div = document.createElement('div');
+    div.id = 'aw-' + f;
+    div.className = 'hidden';
+    const lbl = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    div.innerHTML = `<label style="font-size:12px; font-weight:700;">${escapeHtml(lbl)}</label><input type="text" id="editExtra_${f}" style="width:100%;">`;
+    grid.appendChild(div);
+  });
+}
+
+function applyAdminStudentModalFields() {
+  ensureAdminExtraInputs();
+  const s = schoolsMap[activeUdise];
+  const active = (s && s.customFields && s.customFields.length > 0)
+    ? s.customFields
+    : ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  ALL_AVAILABLE_FIELDS.forEach(f => {
+    const wrap = document.getElementById('aw-' + f);
+    if (wrap) wrap.classList.toggle('hidden', !active.includes(f));
+  });
+  const noteEl = document.getElementById('adminModalFieldsNote');
+  if (noteEl) {
+    noteEl.textContent = `Showing configured fields: ${active.map(f => (EXCEL_HEADER_NAMES[f] || f).toUpperCase()).join(', ')}`;
+  }
+}
+
+function setClassSelectValue(selectId, rawVal) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const norm = normalizeClass(rawVal);
+  if (!norm) { sel.value = ''; return; }
+  let found = false;
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === norm || sel.options[i].value.toLowerCase() === String(rawVal).toLowerCase()) {
+      sel.selectedIndex = i;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    const opt = document.createElement('option');
+    opt.value = norm;
+    opt.textContent = `Class ${norm}`;
+    sel.appendChild(opt);
+    sel.value = norm;
+  }
+}
+
+function openEditModal(id) {
+  applyAdminStudentModalFields();
+  const s = currentSchoolStudents.find(x => String(x.id) === String(id));
+  if (!s) return;
+  document.getElementById('editId').value = s.id;
+  document.getElementById('editName').value = s.name || '';
+  setClassSelectValue('editClass', s.class);
+  document.getElementById('editRoll').value = s.roll || '';
+  document.getElementById('editDob').value = formatDateForInput(s.dob);
+  document.getElementById('editBlood').value = s.bloodGroup || s.blood || '';
+  document.getElementById('editPhone').value = s.mobile || s.phone || '';
+  document.getElementById('editFather').value = s.father || '';
+  document.getElementById('editMother').value = s.mother || '';
+  document.getElementById('editAddress').value = s.address || '';
+  EXTRA_STUDENT_FIELDS.forEach(f => {
+    const inp = document.getElementById('editExtra_' + f);
+    if (inp) inp.value = s[f] || '';
+  });
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+async function saveStudentEdit() {
+  const id = document.getElementById('editId').value;
+  const existing = currentSchoolStudents.find(x => String(x.id) === String(id)) || {};
+  const updates = {
+    name: document.getElementById('editName').value.trim(),
+    class: document.getElementById('editClass').value.trim(),
+    roll: document.getElementById('editRoll').value.trim(),
+    dob: document.getElementById('editDob').value.trim() || formatDateForInput(existing.dob) || '',
+    bloodGroup: document.getElementById('editBlood').value,
+    mobile: document.getElementById('editPhone').value.trim(),
+    father: document.getElementById('editFather').value.trim(),
+    mother: document.getElementById('editMother').value.trim(),
+    address: document.getElementById('editAddress').value.trim(),
+    finalised: true,
+    lastModified: Date.now()
+  };
+  EXTRA_STUDENT_FIELDS.forEach(f => {
+    const inp = document.getElementById('editExtra_' + f);
+    if (inp) updates[f] = inp.value.trim();
+  });
+  await db.collection('students').doc(String(id)).update(updates);
+  const s = currentSchoolStudents.find(x => String(x.id) === String(id));
+  if (s) Object.assign(s, updates);
+  document.getElementById('editModal').style.display = 'none';
+  renderTable();
+}
+
+async function previewSingleStudentCard() {
+  const id = document.getElementById('editId').value;
+  const s = currentSchoolStudents.find(x => String(x.id) === String(id)) || {};
+  const temp = {
+    ...s,
+    name: document.getElementById('editName').value,
+    class: document.getElementById('editClass').value,
+    roll: document.getElementById('editRoll').value,
+    dob: document.getElementById('editDob').value,
+    bloodGroup: document.getElementById('editBlood').value,
+    mobile: document.getElementById('editPhone').value,
+    father: document.getElementById('editFather').value,
+    mother: document.getElementById('editMother').value,
+    address: document.getElementById('editAddress').value
+  };
+  EXTRA_STUDENT_FIELDS.forEach(f => {
+    const inp = document.getElementById('editExtra_' + f);
+    if (inp) temp[f] = inp.value.trim();
+  });
+  const blob = await drawUnifiedCard(temp, schoolsMap[activeUdise]);
+  document.getElementById('adminPreviewImg').src = URL.createObjectURL(blob);
+  document.getElementById('adminPreviewModal').style.display = 'flex';
+}
+
+function openSchoolEdit(udise) {
+  const s = schoolsMap[udise]; if (!s) return;
+  populateClientDropdowns();
+  document.getElementById('esOldUdise').value = udise;
+  document.getElementById('esClient').value = s.clientId || 'ADMIN';
+  document.getElementById('esName').value = s.name || '';
+  document.getElementById('esUdise').value = s.udise || '';
+  document.getElementById('esPhone').value = s.phone || '';
+  document.getElementById('esBlock').value = s.block || '';
+  document.getElementById('esDistrict').value = s.district || '';
+  document.getElementById('esPin').value = s.pin || '';
+  document.getElementById('esAppPassword').value = s.appPassword || '';
+  document.getElementById('esUdisePass').value = s.udisePass || '';
+
+  const activeFields = s.customFields || ['name', 'class', 'roll', 'dob', 'blood', 'phone'];
+  const box = document.getElementById('esCustomFieldsBox');
+  box.innerHTML = '';
+  ALL_AVAILABLE_FIELDS.forEach(f => {
+    const chk = activeFields.includes(f) ? 'checked' : '';
+    const lbl = EXCEL_HEADER_NAMES[f] || f.toUpperCase();
+    box.innerHTML += `<label style="display:flex; align-items:center; gap:5px;"><input type="checkbox" class="es-field-cb" value="${f}" ${chk} ${f==='name'?'disabled':''}> ${escapeHtml(lbl)}</label>`;
+  });
+  document.getElementById('editSchoolModal').style.display = 'flex';
+}
+
+async function saveSchoolConfig() {
+  const oldUdise = document.getElementById('esOldUdise').value;
+  const newUdise = String(document.getElementById('esUdise').value).trim();
+  const customFields = Array.from(document.querySelectorAll('.es-field-cb:checked')).map(c => c.value);
+  const updates = {
+    clientId: document.getElementById('esClient').value,
+    name: document.getElementById('esName').value.trim(),
+    udise: newUdise,
+    phone: document.getElementById('esPhone').value.trim(),
+    block: document.getElementById('esBlock').value.trim(),
+    district: document.getElementById('esDistrict').value.trim(),
+    pin: document.getElementById('esPin').value.trim(),
+    appPassword: document.getElementById('esAppPassword').value.trim(),
+    udisePass: document.getElementById('esUdisePass').value.trim(),
+    customFields,
+    lastModified: Date.now()
+  };
+
+  const signFile = document.getElementById('esSignInput').files[0];
+  if (signFile) {
+    updates.hmSignature = await uploadImageToCloud(signFile, `signatures/${newUdise}`, 400, 150, 'image/png');
+    updates.signature = updates.hmSignature;
+  }
+
+  await db.collection('schools').doc(newUdise).set(updates, { merge: true });
+  Object.assign(schoolsMap[oldUdise], updates);
+  localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+  document.getElementById('editSchoolModal').style.display = 'none';
+  renderDashboard();
+  if (activeUdise === oldUdise) openSchoolDetail(newUdise);
+}
+
+async function deleteEntireSchool() {
+  const udise = document.getElementById('esOldUdise').value;
+  if (!confirm(`WARNING: Permanently delete UDISE ${udise} and ALL its student records? The school will no longer be able to log in unless registered again.`)) return;
+  await wipeSchoolAndStudents(udise);
+  localStorage.setItem('adminSchoolsMapV3', JSON.stringify(schoolsMap));
+  document.getElementById('editSchoolModal').style.display = 'none';
+  showDashboard();
+}
+
+/* ================= SCHOOL VERIFICATION PDF (COMBINED ID CARDS + WATERMARK) ================= */
+async function renderWatermarkedCardDataUrl(student, school) {
+  await drawUnifiedCard(student, school);
+  const wCanvas = document.createElement('canvas');
+  wCanvas.width = CARD_W;
+  wCanvas.height = CARD_H;
+  const wCtx = wCanvas.getContext('2d');
+  wCtx.fillStyle = '#FFFFFF';
+  wCtx.fillRect(0, 0, CARD_W, CARD_H);
+  wCtx.drawImage(canvas, 0, 0);
+
+  // Diagonal semi-transparent verification watermark across every rendered card
+  wCtx.save();
+  wCtx.translate(CARD_W / 2, CARD_H / 2);
+  wCtx.rotate(-32 * Math.PI / 180);
+  wCtx.font = 'bold 42px Arial, sans-serif';
+  wCtx.textAlign = 'center';
+  wCtx.textBaseline = 'middle';
+  const wmBands = [
+    { y: -260, text: 'FOR VERIFICATION ONLY' },
+    { y: 0, text: 'PROOF • NOT FOR PRINT' },
+    { y: 260, text: 'FOR VERIFICATION ONLY' }
+  ];
+  wCtx.lineWidth = 4;
+  wCtx.strokeStyle = 'rgba(255,255,255,0.55)';
+  wCtx.fillStyle = 'rgba(220,38,38,0.28)';
+  wmBands.forEach(b => {
+    wCtx.strokeText(b.text, 0, b.y);
+    wCtx.fillText(b.text, 0, b.y);
+  });
+  wCtx.restore();
+
+  return wCanvas.toDataURL('image/jpeg', 0.85);
+}
+
+function renderPdfHeaderBanner(school, clientName, totalCards, pageNum, totalPages) {
+  const bCanvas = document.createElement('canvas');
+  bCanvas.width = 1654;
+  bCanvas.height = 130;
+  const bCtx = bCanvas.getContext('2d');
+  const fontStack = 'OdiaFont, "Noto Sans Oriya", Arial, sans-serif';
+
+  bCtx.fillStyle = '#0b53a0';
+  bCtx.fillRect(0, 0, bCanvas.width, bCanvas.height);
+
+  bCtx.fillStyle = '#ffffff';
+  bCtx.textAlign = 'left';
+  bCtx.font = `bold 36px ${fontStack}`;
+  const schoolTitle = String(school.name || 'School');
+  bCtx.fillText(schoolTitle, 28, 48, 1180);
+
+  bCtx.font = `24px ${fontStack}`;
+  const loc = [school.block, school.district, school.pin].filter(Boolean).join(', ');
+  const subLine = `UDISE: ${school.udise || '-'}   |   ${loc || 'School Address'}   |   Partner: ${clientName}`;
+  bCtx.fillStyle = '#e2e8f0';
+  bCtx.fillText(subLine, 28, 92, 1180);
+
+  // Red VERIFICATION PROOF badge on right
+  bCtx.fillStyle = '#dc2626';
+  bCtx.fillRect(1260, 16, 366, 46);
+  bCtx.fillStyle = '#ffffff';
+  bCtx.font = 'bold 24px Arial, sans-serif';
+  bCtx.textAlign = 'center';
+  bCtx.fillText('VERIFICATION PROOF', 1443, 47);
+
+  // Date & page counter below badge
+  const genDate = new Date().toLocaleDateString('en-IN');
+  bCtx.textAlign = 'right';
+  bCtx.font = '22px Arial, sans-serif';
+  bCtx.fillStyle = '#e2e8f0';
+  bCtx.fillText(`Cards: ${totalCards}  |  ${genDate}  |  Page ${pageNum}/${totalPages}`, 1626, 98);
+
+  return bCanvas.toDataURL('image/jpeg', 0.9);
+}
+
+async function buildVerificationPdf(school, students, clientName, btn) {
+  if (!window.jspdf || !window.jspdf.jsPDF) return alert("PDF library failed to load. Check your internet connection and refresh.");
+  if (!students.length) return alert("No students in this school yet.");
+
+  const oldHtml = btn ? btn.innerHTML : '';
+  if (btn) btn.disabled = true;
+  const setBtn = t => { if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t}`; };
+
+  try {
+    const list = [...students].sort((a, b) => {
+      const ca = parseInt(normalizeClass(a.class)) || 0, cb = parseInt(normalizeClass(b.class)) || 0;
+      if (ca !== cb) return ca - cb;
+      const ra = parseInt(a.roll) || 9999, rb = parseInt(b.roll) || 9999;
+      if (ra !== rb) return ra - rb;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    const cardImages = [];
+    for (let i = 0; i < list.length; i++) {
+      setBtn(`Rendering Card ${i + 1}/${list.length}...`);
+      const imgUrl = await renderWatermarkedCardDataUrl(list[i], school);
+      cardImages.push(imgUrl);
+      if (i % 2 === 0) await new Promise(r => setTimeout(r, 15));
+    }
+
+    setBtn('Combining into PDF...');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, H = 297;
+    const perPage = 9; // 3 columns x 3 rows
+    const totalPages = Math.ceil(list.length / perPage);
+    const cardW = 53, cardH = 84, colGap = 11, startX = (W - (3 * cardW + 2 * colGap)) / 2;
+    const gridStartY = 22, rowStep = 88;
+
+    for (let p = 0; p < totalPages; p++) {
+      if (p > 0) doc.addPage();
+      const bannerUrl = renderPdfHeaderBanner(school, clientName, list.length, p + 1, totalPages);
+      doc.addImage(bannerUrl, 'JPEG', 8, 5, 194, 15.2);
+
+      const startIdx = p * perPage;
+      const endIdx = Math.min(startIdx + perPage, list.length);
+      for (let idx = startIdx; idx < endIdx; idx++) {
+        const localIdx = idx - startIdx;
+        const col = localIdx % 3;
+        const row = Math.floor(localIdx / 3);
+        const x = startX + col * (cardW + colGap);
+        const slotY = gridStartY + row * rowStep;
+
+        const st = list[idx];
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(51, 65, 85);
+        doc.text(`#${idx + 1}  •  Class: ${normalizeClass(st.class) || '-'}  •  Roll: ${st.roll || '-'}`, x, slotY + 2.5);
+
+        const cardY = slotY + 3.8;
+        doc.addImage(cardImages[idx], 'JPEG', x, cardY, cardW, cardH);
+        doc.setDrawColor(148, 163, 184);
+        doc.setLineWidth(0.25);
+        doc.rect(x, cardY, cardW, cardH);
+      }
+
+      // Bottom footer + HM signature line on every page
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.2);
+      doc.line(8, 286.5, W - 8, 286.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(185, 28, 28);
+      doc.text('FOR VERIFICATION ONLY — Check all photos, spellings & details. Sign & return for final ID card printing.', 8, 290);
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(8);
+      doc.text('Signature & Seal of Head Master: ___________________________', 8, 294.5);
+      doc.text('Date: ______________', W - 8, 294.5, { align: 'right' });
+    }
+
+    const safeName = String(school.name || 'School').replace(/[^a-z0-9]+/gi, '_').slice(0, 40);
+    doc.save(`Verification_Cards_${school.udise}_${safeName}.pdf`);
+  } catch (e) {
+    alert("PDF generation failed: " + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+  }
+}
+
+function generateSchoolVerificationPdf() {
+  const s = schoolsMap[activeUdise];
+  if (!s) return alert('No school selected');
+  const targets = selectedStudentIds.size > 0
+    ? currentSchoolStudents.filter(st => selectedStudentIds.has(String(st.id)))
+    : currentSchoolStudents;
+  buildVerificationPdf(s, targets, clientsMap[s.clientId]?.name || 'Direct Admin', document.getElementById('verifyPdfBtn'));
+}
+
+function exportBackup() {
+  const blob = new Blob([JSON.stringify({ clientsMap, schoolsMap }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `MasterAdmin_Backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+</script>
+</body>
+</html>
